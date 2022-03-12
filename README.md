@@ -7,9 +7,9 @@ This specific implementation implements the sparse matrix approach and the lates
 
 </p>
 
-<p align="center"> <img src="" /> </p>
-<p align="center"> <img src="" /> </p>
-<p align="center"> <img src="" /> </p>
-<p align="center"> <img src="" /> </p>
-<p align="center"> <img src="" /> </p>
-<p align="center"> <img src="" /> </p>
+<p align="center"> <img src="https://github.com/xTriixrx/DLX/blob/master/imgs/matrix-structure.png" /> </p>
+<p align="center"> <img src="https://github.com/xTriixrx/DLX/blob/master/imgs/algorithmx-description.png" /> </p>
+<p align="center"> <img src="https://github.com/xTriixrx/DLX/blob/master/imgs/cover-psuedocode.png" /> </p>
+<p align="center"> <img src="https://github.com/xTriixrx/DLX/blob/master/imgs/hide-psuedocode.png" /> </p>
+<p align="center"> <img src="https://github.com/xTriixrx/DLX/blob/master/imgs/uncover-psuedocode.png" /> </p>
+<p align="center"> <img src="https://github.com/xTriixrx/DLX/blob/master/imgs/unhide-psuedocode.png" /> </p>
