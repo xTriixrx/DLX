@@ -621,18 +621,12 @@ void printMatrix(const struct node* matrix, int arr_len, int item_len)
 
                 // If next node is a spacer, move to next line, generate a spacer and return again.
                 if (matrix[i + 1].top->data <= 0)
-                {
-                    char* spaces;
-
-                    if (item_len - matrix[i].top->data != 0)
-                    {
-                         spaces = repeatStr("\t", (item_len - matrix[i].top->data) + 1);
-                    }
-                    
+                {   
                     char* sep = repeatStr("-", item_len * 4);
 
                     if (item_len - matrix[i].top->data != 0)
                     {
+                        char* spaces = repeatStr("\t", (item_len - matrix[i].top->data) + 1);
                         printf("%s%d\n%s\n", spaces, matrix[i + 1].data, sep);
                         free(spaces);
                     }
@@ -773,7 +767,7 @@ int getNodeCount(FILE* coverFile)
     nodeCount += getOptionNodesCount(coverFile);
     
     // Reset file descriptor back to beginning of file
-    fseek(coverFile, 0, 0);
+    fseek(coverFile, 0L, SEEK_SET);
 
     // Count number of lines which is equivalent to number of spacer nodes that need to be created 
     while ((read = getline(&buffer, &len, coverFile)) != -1)
@@ -782,7 +776,7 @@ int getNodeCount(FILE* coverFile)
     }
     
     // Reset file descriptor back to beginning of file
-    fseek(coverFile, 0, 0);
+    fseek(coverFile, 0L, SEEK_SET);
 
     free(buffer);
 
@@ -827,7 +821,7 @@ int getItemCount(FILE* coverFile)
     }
 
     // Reset file descriptor back to beginning of file
-    fseek(coverFile, 0, 0);
+    fseek(coverFile, 0L, SEEK_SET);
 
     free(buffer);
 
@@ -856,7 +850,7 @@ int getOptionsCount(FILE* coverFile)
     }
 
     // Reset file descriptor back to beginning of file
-    fseek(coverFile, 0, 0);
+    fseek(coverFile, 0L, SEEK_SET);
 
     free(buffer);
 
@@ -872,7 +866,6 @@ int getOptionsCount(FILE* coverFile)
  */ 
 int getOptionNodesCount(FILE* coverFile)
 {
-    char ch = 0;
     size_t len = 0;
     ssize_t read = 0;
     char* buffer = NULL;
@@ -881,20 +874,22 @@ int getOptionNodesCount(FILE* coverFile)
     // Skip over title line
     read = getline(&buffer, &len, coverFile);
 
-    // Read sparse matrix and count number of 1's that represent a node.
-    while (ch != EOF)
+    // Feed in line by line chunks for processing
+    while ((read = getline(&buffer, &len, coverFile)) != -1)
     {
-        ch = fgetc(coverFile);
-
-        // Count number of 1's that are described in the file.
-        if (ch == '1')
+        // Read sparse matrix and count number of 1's that represent a node.
+        for (char* ch = buffer; *ch; ch++)
         {
-            optionCount++;
+            // Count number of 1's that are described in the file.
+            if (*ch == '1')
+            {
+                optionCount++;
+            }
         }
     }
 
     // Reset file descriptor back to beginning of file
-    fseek(coverFile, 0, 0);
+    fseek(coverFile, 0L, SEEK_SET);
 
     free(buffer);
 
