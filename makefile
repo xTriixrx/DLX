@@ -7,6 +7,15 @@ CC = gcc
 #  -O3    - this flag is used for production level optimization
 CFLAGS = -g -Wall -O3
 
+# Src directory
+SRC = src
+
+# Bin directory
+BIN = bin
+
+# Object directory
+ODIR = obj
+
 # The build targets
 DLX_TARGET = dlx
 
@@ -14,10 +23,10 @@ DLX_TARGET = dlx
 DLX_OBJ = dlx.o
 
 # Build target set
-TARGETS = $(DLX_TARGET)
+TARGETS = ${DLX_TARGET}
 
 # Object name set
-OBJS = $(DLX_OBJ)
+OBJS = ${DLX_OBJ}
 
 # path to any header files not in /usr/include or the current directory 
 INCLUDES +=-I include/
@@ -29,18 +38,19 @@ INCLUDES +=-I include/
 # library to link into the executable 
 #LIBS = -lmymath -lsimple -lm -lpthread
 
-default: $(TARGETS)
+all: dirs ${TARGETS}
 
 clean:
-	rm *.o ${DLX_TARGET}
+	rm -f ${ODIR}/* ${BIN}/*
+	rmdir ${ODIR} ${BIN}
 
-cleanDLX:
-	rm *.o ${DLX_TARGET}
+dirs:
+	mkdir -p ${ODIR} ${BIN}
 
 # Link DLX_TARGET binary
 ${DLX_TARGET} : ${DLX_OBJ}
-	${CC} ${CFLAGS} ${LFLAGS} -o ${DLX_TARGET} ${DLX_OBJ} ${LIBS}
+	${CC} ${CFLAGS} ${LFLAGS} -o ${BIN}/${DLX_TARGET} ${ODIR}/${DLX_OBJ} ${LIBS}
 
 # Generic build of objects
 ${OBJS}:
-	${CC} -c ${CFLAGS} ${INCLUDES} src/${@:.o=.c}
+	${CC} -c ${CFLAGS} ${INCLUDES} ${SRC}/${@:.o=.c} && mv *.o ${ODIR}
