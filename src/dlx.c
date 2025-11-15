@@ -26,9 +26,9 @@
  */
 int main(int argc, char** argv)
 {
-    if (argc != 2)
+    if (argc != 3)
     {
-        printf("./dlx path/to/cover_file.txt\n");
+        printf("./dlx path/to/cover_file.txt path/to/output_solutions.txt\n");
         exit(1);
     }
 
@@ -67,8 +67,20 @@ int main(int argc, char** argv)
     //printOptionRow(&matrix[9]);
     //printMatrix(matrix, (sizeof(struct node) * nodeCount) / sizeof(struct node), itemCount);
 
-    // Search and print out found solutions to stdout
-    search(matrix, 0, solutions);
+    // Prepare output file for logging solutions
+    const char* solution_output_path = argv[2];
+    FILE* solution_output = fopen(solution_output_path, "w");
+
+    if (solution_output == NULL)
+    {
+        printf("Unable to create output file %s.\n", solution_output_path);
+        freeMemory(matrix, solutions, titles, itemCount);
+        exit(1);
+    }
+
+    // Search and print out found solutions to stdout and output file
+    search(matrix, 0, solutions, solution_output);
+    fclose(solution_output);
     
     // Release all malloc'd memory
     freeMemory(matrix, solutions, titles, itemCount);
@@ -85,12 +97,12 @@ int main(int argc, char** argv)
  * @param char** A char pointer to pointers containing partials of a solutions.
  * @return void
  */ 
-void search(struct node* head, int level, char** solutions)
+void search(struct node* head, int level, char** solutions, FILE* solution_output)
 {
     // If all items have been covered, output a found solution.
     if (head->right == head)
     {
-        printSolutions(solutions, level);
+        printSolutions(solutions, level, solution_output);
         return;
     }
     
@@ -137,7 +149,7 @@ void search(struct node* head, int level, char** solutions)
         }
         
         // Recursively search for potential solutions...
-        search(head, level + 1, solutions);
+        search(head, level + 1, solutions, solution_output);
 
         // Iterate optionPart to options' spacer node
         optionPart = option + 1;
@@ -646,18 +658,31 @@ void printMatrix(const struct node* matrix, int arr_len, int item_len)
  * A printing function used by the main search method that prints out the found solutions to stdout. Found solutions
  * could be piped to a file or to some other application for post-processing.
  */
-void printSolutions(char** solutions, int level)
+void printSolutions(char** solutions, int level, FILE* solution_output)
 {
     for (int i = 0; i < level; i++)
     {
         if ((i + 1) == level)
         {
             printf("%s\n", solutions[i]);
+            if (solution_output != NULL)
+            {
+                fprintf(solution_output, "%s\n", solutions[i]);
+            }
         }
         else
         {
             printf("%s ", solutions[i]);
+            if (solution_output != NULL)
+            {
+                fprintf(solution_output, "%s ", solutions[i]);
+            }
         }
+    }
+
+    if (solution_output != NULL)
+    {
+        fflush(solution_output);
     }
 }
 
