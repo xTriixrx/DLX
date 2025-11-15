@@ -33,12 +33,8 @@ pip install -r requirements.txt
 Then configure/build/test:
 
 ```bash
-# configure dependencies and generate toolchain info
-conan install . --output-folder=build --build=missing
-
-# configure + build + run tests (ctest) inside the build/ folder
-cd build
-conan build ..
+# configure dependencies, generate toolchain info, configure + build + run tests (ctest)
+conan install . && conan build .
 ```
 
 `conan build` automatically invokes `ctest` when tests are enabled, so the pipeline stays in sync with the CMake setup. To clean everything, remove the `build/` directory (`rm -rf build`) and deactivate/delete the virtual environment when you’re done.
