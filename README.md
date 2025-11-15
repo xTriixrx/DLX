@@ -55,6 +55,8 @@ conan profile detect --name default
 cp conan/profiles/default ~/.conan2/profiles
 ```
 
+You will have to update your `os`, `arch`, and `compiler` settings in the default profile provided as per your own build machine settings.
+
 ## Sudoku Solver
 
 ### Building
