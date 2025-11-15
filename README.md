@@ -16,8 +16,44 @@ This specific implementation implements the sparse matrix approach and the lates
 
 ## Build Requirements
 
+- Conan 2.x
 - C++ 17 & C 11 compliant compiler. `g++, clang, etc.`
-- Cmake
+- CMake
+
+### Conan Workflow
+
+The project ships with a `conanfile.py` so you can use Conan to configure, build, and run the tests in a single workflow. If you prefer to isolate Conan in a Python virtual environment, run:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate   # On Windows use .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Then configure/build/test:
+
+```bash
+# configure dependencies and generate toolchain info
+conan install . --output-folder=build --build=missing
+
+# configure + build + run tests (ctest) inside the build/ folder
+cd build
+conan build ..
+```
+
+`conan build` automatically invokes `ctest` when tests are enabled, so the pipeline stays in sync with the CMake setup. To clean everything, remove the `build/` directory (`rm -rf build`) and deactivate/delete the virtual environment when you’re done.
+
+#### Conan Configuration
+
+You must ensure you have Conan 2.x installed on your build machine. Once you have conan installed you can create the `default` profile with the following:
+
+```bash
+# Creates a default profile
+conan profile detect --name default
+
+# Will overwrite the detected environment with the appropriate settings
+cp conan/profiles/default ~/.conan2/profiles
+```
 
 ## Sudoku Solver
 
@@ -26,8 +62,7 @@ This specific implementation implements the sparse matrix approach and the lates
 Within the cloned repository's main folder `/your_path/dlx`, you can execute the following commands to build the necessary binaries.
 
 ```bash
-cmake -S . -B build
-cmake --build build
+conan install . && conan build .
 ```
 
 ### Execution
