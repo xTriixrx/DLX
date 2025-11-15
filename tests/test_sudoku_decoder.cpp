@@ -1,34 +1,35 @@
 #include "sudoku_decoder.h"
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <gtest/gtest.h>
+#include <string>
 #include <string.h>
 #include <unistd.h>
 
-static void write_string_to_file(const char* path, const char* contents)
+namespace
+{
+
+void write_string_to_file(const char* path, const char* contents)
 {
     FILE* file = fopen(path, "w");
-    assert(file != NULL);
+    ASSERT_NE(file, nullptr);
     fputs(contents, file);
     fclose(file);
 }
 
-static void read_file_into_buffer(const char* path, char** buffer, size_t* length)
+void read_file_into_buffer(const char* path, std::string& buffer)
 {
     FILE* file = fopen(path, "r");
-    assert(file != NULL);
+    ASSERT_NE(file, nullptr);
     fseek(file, 0, SEEK_END);
     long size = ftell(file);
     fseek(file, 0, SEEK_SET);
-    *buffer = static_cast<char*>(malloc(size + 1));
-    assert(*buffer != NULL);
-    fread(*buffer, 1, size, file);
-    (*buffer)[size] = '\0';
-    *length = (size_t)size;
+    buffer.resize(size);
+    size_t read = fread(buffer.data(), 1, size, file);
+    ASSERT_EQ(read, static_cast<size_t>(size));
+    buffer.push_back('\0');
     fclose(file);
 }
 
-static void test_decoder_reconstructs_solution(void)
+TEST(SudokuDecoderTest, ReconstructsSolution)
 {
     const char* solution_numbers =
         "1 2 8 24 31 32 33 47 48 60 64 75 87 88 95 96 89 97 103 93 99 104 105 113 "
@@ -38,23 +39,22 @@ static void test_decoder_reconstructs_solution(void)
 
     char solution_template[] = "tests/tmp_rowsXXXXXX";
     int solution_fd = mkstemp(solution_template);
-    assert(solution_fd != -1);
+    ASSERT_NE(solution_fd, -1);
     close(solution_fd);
     write_string_to_file(solution_template, solution_numbers);
 
     char output_template[] = "tests/tmp_solvedXXXXXX";
     int output_fd = mkstemp(output_template);
-    assert(output_fd != -1);
+    ASSERT_NE(output_fd, -1);
     close(output_fd);
 
     int status = decode_sudoku_solution("tests/sudoku_test.txt",
                                         solution_template,
                                         output_template);
-    assert(status == 0);
+    ASSERT_EQ(status, 0);
 
-    char* buffer = NULL;
-    size_t len = 0;
-    read_file_into_buffer(output_template, &buffer, &len);
+    std::string buffer;
+    read_file_into_buffer(output_template, buffer);
 
     const char* expected =
         "Solution #1\n"
@@ -68,16 +68,10 @@ static void test_decoder_reconstructs_solution(void)
         "287419635\n"
         "345286179\n\n";
 
-    assert(strcmp(buffer, expected) == 0);
+    EXPECT_STREQ(buffer.c_str(), expected);
 
-    free(buffer);
     remove(solution_template);
     remove(output_template);
 }
 
-int main(void)
-{
-    test_decoder_reconstructs_solution();
-    printf("sudoku_decoder tests passed\n");
-    return 0;
-}
+} // namespace

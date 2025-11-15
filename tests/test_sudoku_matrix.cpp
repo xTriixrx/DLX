@@ -1,31 +1,31 @@
 #include "sudoku_matrix.h"
 #include "dlx_binary.h"
-#include <assert.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <gtest/gtest.h>
 #include <string.h>
 #include <unistd.h>
 
 #define COLUMN_COUNT 324
 
-static void write_string_to_file(const char* path, const char* contents)
+namespace
+{
+
+void write_string_to_file(const char* path, const char* contents)
 {
     FILE* file = fopen(path, "w");
-    assert(file != NULL);
+    ASSERT_NE(file, nullptr);
     fputs(contents, file);
     fclose(file);
 }
 
-static void count_header_and_rows(const char* path, int* header_cols, int* row_count)
+void count_header_and_rows(const char* path, int* header_cols, int* row_count)
 {
     FILE* file = fopen(path, "r");
-    assert(file != NULL);
+    ASSERT_NE(file, nullptr);
 
     char* line = NULL;
     size_t len = 0;
     ssize_t read = getline(&line, &len, file);
-    assert(read != -1);
+    ASSERT_NE(read, -1);
 
     int columns = 0;
     char* token = strtok(line, " \r\n");
@@ -44,7 +44,7 @@ static void count_header_and_rows(const char* path, int* header_cols, int* row_c
         token = strtok(line, " \r\n");
         while (token != NULL)
         {
-            assert(strcmp(token, "0") == 0 || strcmp(token, "1") == 0);
+            ASSERT_TRUE(strcmp(token, "0") == 0 || strcmp(token, "1") == 0);
             if (strcmp(token, "1") == 0)
             {
                 ones++;
@@ -52,8 +52,8 @@ static void count_header_and_rows(const char* path, int* header_cols, int* row_c
             values++;
             token = strtok(NULL, " \r\n");
         }
-        assert(values == COLUMN_COUNT);
-        assert(ones == 4);
+        ASSERT_EQ(values, COLUMN_COUNT);
+        ASSERT_EQ(ones, 4);
         rows++;
     }
 
@@ -62,21 +62,21 @@ static void count_header_and_rows(const char* path, int* header_cols, int* row_c
     fclose(file);
 }
 
-static void assert_first_row_columns(const char* path, const int expected_indices[4])
+void assert_first_row_columns(const char* path, const int expected_indices[4])
 {
     FILE* file = fopen(path, "r");
-    assert(file != NULL);
+    ASSERT_NE(file, nullptr);
 
     char* line = NULL;
     size_t len = 0;
 
     // Skip header
     ssize_t read = getline(&line, &len, file);
-    assert(read != -1);
+    ASSERT_NE(read, -1);
 
     // Read first data row
     read = getline(&line, &len, file);
-    assert(read != -1);
+    ASSERT_NE(read, -1);
 
     int indices[4] = {0};
     int discovered = 0;
@@ -86,7 +86,7 @@ static void assert_first_row_columns(const char* path, const int expected_indice
     {
         if (strcmp(token, "1") == 0)
         {
-            assert(discovered < 4);
+            ASSERT_LT(discovered, 4);
             indices[discovered++] = column_index;
         }
 
@@ -94,17 +94,17 @@ static void assert_first_row_columns(const char* path, const int expected_indice
         token = strtok(NULL, " \r\n");
     }
 
-    assert(discovered == 4);
+    ASSERT_EQ(discovered, 4);
     for (int i = 0; i < 4; i++)
     {
-        assert(indices[i] == expected_indices[i]);
+        EXPECT_EQ(indices[i], expected_indices[i]);
     }
 
     free(line);
     fclose(file);
 }
 
-static void test_empty_grid_generates_full_matrix(void)
+TEST(SudokuMatrixTest, EmptyGridGeneratesFullMatrix)
 {
     const char* puzzle =
         "000000000\n"
@@ -119,29 +119,29 @@ static void test_empty_grid_generates_full_matrix(void)
 
     char puzzle_template[] = "tests/tmp_puzzleXXXXXX";
     int puzzle_fd = mkstemp(puzzle_template);
-    assert(puzzle_fd != -1);
+    ASSERT_NE(puzzle_fd, -1);
     close(puzzle_fd);
     write_string_to_file(puzzle_template, puzzle);
 
     char cover_template[] = "tests/tmp_coverXXXXXX";
     int cover_fd = mkstemp(cover_template);
-    assert(cover_fd != -1);
+    ASSERT_NE(cover_fd, -1);
     close(cover_fd);
 
     int result = convert_sudoku_to_cover(puzzle_template, cover_template, false);
-    assert(result == 0);
+    ASSERT_EQ(result, 0);
 
     int header_cols = 0;
     int row_count = 0;
     count_header_and_rows(cover_template, &header_cols, &row_count);
-    assert(header_cols == COLUMN_COUNT);
-    assert(row_count == 729);
+    EXPECT_EQ(header_cols, COLUMN_COUNT);
+    EXPECT_EQ(row_count, 729);
 
     remove(puzzle_template);
     remove(cover_template);
 }
 
-static void test_prefilled_digit_limits_candidates(void)
+TEST(SudokuMatrixTest, PrefilledDigitsLimitCandidates)
 {
     const char* puzzle =
         "100000000\n"
@@ -156,24 +156,23 @@ static void test_prefilled_digit_limits_candidates(void)
 
     char puzzle_template[] = "tests/tmp_puzzleXXXXXX";
     int puzzle_fd = mkstemp(puzzle_template);
-    assert(puzzle_fd != -1);
+    ASSERT_NE(puzzle_fd, -1);
     close(puzzle_fd);
     write_string_to_file(puzzle_template, puzzle);
 
     char cover_template[] = "tests/tmp_coverXXXXXX";
     int cover_fd = mkstemp(cover_template);
-    assert(cover_fd != -1);
+    ASSERT_NE(cover_fd, -1);
     close(cover_fd);
 
     int result = convert_sudoku_to_cover(puzzle_template, cover_template, false);
-    assert(result == 0);
+    ASSERT_EQ(result, 0);
 
     int header_cols = 0;
     int row_count = 0;
     count_header_and_rows(cover_template, &header_cols, &row_count);
-    assert(header_cols == COLUMN_COUNT);
-    // Expect fewer options because digit 1 is already used by row, column, and box constraints
-    assert(row_count == 701);
+    EXPECT_EQ(header_cols, COLUMN_COUNT);
+    EXPECT_EQ(row_count, 701);
 
     const int expected_indices[4] = {0, 81, 162, 243};
     assert_first_row_columns(cover_template, expected_indices);
@@ -182,7 +181,7 @@ static void test_prefilled_digit_limits_candidates(void)
     remove(cover_template);
 }
 
-static void test_binary_cover_output(void)
+TEST(SudokuMatrixTest, BinaryCoverOutputMatchesExpectations)
 {
     const char* puzzle =
         "100000000\n"
@@ -197,37 +196,37 @@ static void test_binary_cover_output(void)
 
     char puzzle_template[] = "tests/tmp_puzzleXXXXXX";
     int puzzle_fd = mkstemp(puzzle_template);
-    assert(puzzle_fd != -1);
+    ASSERT_NE(puzzle_fd, -1);
     close(puzzle_fd);
     write_string_to_file(puzzle_template, puzzle);
 
     char cover_template[] = "tests/tmp_coverXXXXXX";
     int cover_fd = mkstemp(cover_template);
-    assert(cover_fd != -1);
+    ASSERT_NE(cover_fd, -1);
     close(cover_fd);
 
     int result = convert_sudoku_to_cover(puzzle_template, cover_template, true);
-    assert(result == 0);
+    ASSERT_EQ(result, 0);
 
     FILE* cover = fopen(cover_template, "rb");
-    assert(cover != NULL);
+    ASSERT_NE(cover, nullptr);
 
     struct DlxCoverHeader header;
-    assert(dlx_read_cover_header(cover, &header) == 0);
-    assert(header.magic == DLX_COVER_MAGIC);
-    assert(header.version == DLX_BINARY_VERSION);
-    assert(header.column_count == COLUMN_COUNT);
+    ASSERT_EQ(dlx_read_cover_header(cover, &header), 0);
+    EXPECT_EQ(header.magic, DLX_COVER_MAGIC);
+    EXPECT_EQ(header.version, DLX_BINARY_VERSION);
+    EXPECT_EQ(header.column_count, COLUMN_COUNT);
 
     struct DlxRowChunk chunk = {0};
     int read_status = dlx_read_row_chunk(cover, &chunk);
-    assert(read_status == 1);
-    assert(chunk.row_id == 1);
-    assert(chunk.entry_count == 4);
+    ASSERT_EQ(read_status, 1);
+    EXPECT_EQ(chunk.row_id, 1u);
+    EXPECT_EQ(chunk.entry_count, 4);
 
     const uint32_t expected_indices[4] = {0, 81, 162, 243};
     for (int i = 0; i < 4; i++)
     {
-        assert(chunk.columns[i] == expected_indices[i]);
+        EXPECT_EQ(chunk.columns[i], expected_indices[i]);
     }
 
     dlx_free_row_chunk(&chunk);
@@ -236,11 +235,4 @@ static void test_binary_cover_output(void)
     remove(cover_template);
 }
 
-int main(void)
-{
-    test_empty_grid_generates_full_matrix();
-    test_prefilled_digit_limits_candidates();
-    test_binary_cover_output();
-    printf("sudoku_matrix tests passed\n");
-    return 0;
-}
+} // namespace

@@ -22,7 +22,13 @@ This specific implementation implements the sparse matrix approach and the lates
 
 ### Conan Workflow
 
-The project ships with a `conanfile.py` so you can use Conan to configure, build, and run the tests in a single workflow. If you prefer to isolate Conan in a Python virtual environment, run:
+The project ships with a `conanfile.py` so you can use Conan to configure, build, and run the tests in a single workflow. Before installing dependencies, configure the provided profile and remotes (once per environment):
+
+```bash
+conan config install conan  # installs conan/remotes.json and profiles/default
+```
+
+If you prefer to isolate Conan in a Python virtual environment, run:
 
 ```bash
 python3 -m venv .venv
@@ -38,6 +44,8 @@ conan install . && conan build .
 ```
 
 `conan build` automatically invokes `ctest` when tests are enabled, so the pipeline stays in sync with the CMake setup. To clean everything, remove the `build/` directory (`rm -rf build`) and deactivate/delete the virtual environment when you’re done.
+
+> **Note:** If you already have GoogleTest installed system-wide (e.g., via Homebrew), the build will use that installation. Otherwise, Conan will fetch and build `gtest` from ConanCenter (pass `--build gtest` if a binary isn’t available for your platform).
 
 #### Conan Configuration
 
