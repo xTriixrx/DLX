@@ -1,0 +1,23 @@
+{
+    "cmake.configureSettings": {
+        "GTest_DIR": "/opt/homebrew/lib/cmake/GTest",
+        "CMAKE_PREFIX_PATH": "/opt/homebrew;/opt/homebrew/opt/gtest"
+    },
+    "cmake.configureEnv": {
+        "CMAKE_PREFIX_PATH": "/opt/homebrew;/opt/homebrew/opt/gtest"
+    },
+    "cmake.generator": "Unix Makefiles",
+    "cmake.sourceDirectory": "${workspaceFolder}",
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/**",
+        "/opt/homebrew/include",
+        "/opt/homebrew/include/gtest"
+    ],
+    "C_Cpp.default.compilerArgs": [
+        "-isystem",
+        "/opt/homebrew/include",
+        "-isystem",
+        "/opt/homebrew/include/gtest"
+    ]
+}

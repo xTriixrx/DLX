@@ -6,6 +6,17 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(ENABLE_COVERAGE "Enable coverage flags in Debug builds" ON)
+if(ENABLE_COVERAGE)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        message(STATUS "Enabling coverage flags for Debug configuration")
+    endif()
+    add_compile_options($<$<CONFIG:Debug>:--coverage>)
+    add_link_options($<$<CONFIG:Debug>:--coverage>)
+endif()
+
+add_compile_options($<$<CONFIG:Release>:-O3>)
+
 find_package(GTest CONFIG REQUIRED)
 
 add_library(dlx_binary STATIC src/dlx_binary.cpp)

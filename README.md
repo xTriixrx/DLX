@@ -25,7 +25,7 @@ This specific implementation implements the sparse matrix approach and the lates
 The project ships with a `conanfile.py` so you can use Conan to configure, build, and run the tests in a single workflow. Before installing dependencies, configure the provided profile and remotes (once per environment):
 
 ```bash
-conan config install conan  # installs conan/remotes.json and profiles/default
+conan config install conan  # installs conan/remotes.json, profiles/default & plugins/commands
 ```
 
 If you prefer to isolate Conan in a Python virtual environment, run:
@@ -40,7 +40,12 @@ Then configure/build/test:
 
 ```bash
 # configure dependencies, generate toolchain info, configure + build + run tests (ctest)
-conan install . && conan build .
+conan install . && conan build . -s build_type[Release|Debug]
+
+# optional: generate coverage report (requires gcov/gcovr)
+# --build-folder defaults to ./build, --cov-path copies HTML output to provided directory
+# --theme lets you pick a gcovr HTML theme (default: github.dark-green) (choose from green, blue, github.blue, github.green, github.dark-green, github.dark-blue)
+conan coverage . --build-folder build --cov-path coverage/ --theme github.dark-green
 ```
 
 `conan build` automatically invokes `ctest` when tests are enabled, so the pipeline stays in sync with the CMake setup. To clean everything, remove the `build/` directory (`rm -rf build`) and deactivate/delete the virtual environment when you’re done.
@@ -70,6 +75,16 @@ Within the cloned repository's main folder `/your_path/dlx`, you can execute the
 ```bash
 conan install . && conan build .
 ```
+
+To collect code coverage, build in `Debug` mode (the provided `conan/profiles/default` already sets `build_type=Debug`, enabling GCC-style coverage flags in CMake). Then run:
+
+```bash
+conan install . --output-folder=build --build=gtest
+cd build && conan build ..
+conan coverage . --build-folder build --cov-path build/coverage-report --theme dark-hybrid
+```
+
+This will emit both `build/coverage/coverage.html` (detailed report) and `build/coverage/coverage.xml` (Cobertura format). Use `--cov-path <dir>` to copy the HTML outputs into an additional directory if needed.
 
 ### Execution
 

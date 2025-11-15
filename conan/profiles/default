@@ -1,12 +1,12 @@
 [settings]
 os=Macos
 arch=armv8
-build_type=Release
-compiler=apple-clang
-compiler.version=17
-compiler.cppstd=17
+build_type=Debug
+compiler=gcc
+compiler.version=15
+compiler.cppstd=gnu17
 compiler.cstd=11
-compiler.libcxx=libc++
+compiler.libcxx=libstdc++
 
 [conf]
 tools.build:cxxflags=[]
