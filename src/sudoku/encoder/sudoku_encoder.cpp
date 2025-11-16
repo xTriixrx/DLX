@@ -33,8 +33,6 @@ static bool digit_allowed(int row,
 static void build_column_name(int column_index, char* buffer, size_t buffer_len);
 static void build_column_indices(int row, int col, int digit, uint32_t indices[4]);
 
-extern "C" {
-
 int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path, bool binary_format)
 {
     const char* mode = binary_format ? "wb" : "w";
@@ -222,8 +220,6 @@ int iterate_sudoku_candidates(const int grid[GRID_SIZE][GRID_SIZE],
 
     return 0;
 }
-
-} // extern "C"
 
 
 struct cover_writer_ctx

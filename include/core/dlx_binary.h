@@ -3,10 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "core/dlx.h"
 
 #define DLX_COVER_MAGIC 0x444C5842u /* 'DLXB' */
 #define DLX_SOLUTION_MAGIC 0x444C5853u /* 'DLXS' */
@@ -35,9 +32,10 @@ int dlx_read_cover_header(FILE* input, struct DlxCoverHeader* header);
 int dlx_write_row_chunk(FILE* output, uint32_t row_id, const uint32_t* columns, uint16_t column_count);
 int dlx_read_row_chunk(FILE* input, struct DlxRowChunk* chunk);
 void dlx_free_row_chunk(struct DlxRowChunk* chunk);
-
-#ifdef __cplusplus
-}
-#endif
+struct node* dlx_read_binary(FILE* input,
+                            char*** titles_out,
+                            char*** solutions_out,
+                            int* item_count_out,
+                            int* option_count_out);
 
 #endif

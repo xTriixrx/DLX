@@ -1,8 +1,10 @@
 #include "core/dlx_binary.h"
+#include "core/dlx.h"
 #include <arpa/inet.h>
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
+#include <vector>
 
 static uint16_t dlx_htons(uint16_t value)
 {
@@ -23,8 +25,6 @@ static uint32_t dlx_ntohl(uint32_t value)
 {
     return ntohl(value);
 }
-
-extern "C" {
 
 int dlx_write_cover_header(FILE* output, const struct DlxCoverHeader* header)
 {
@@ -189,4 +189,109 @@ void dlx_free_row_chunk(struct DlxRowChunk* chunk)
     chunk->capacity = 0;
 }
 
-} // extern "C"
+
+struct node* dlx_read_binary(FILE* input,
+                            char*** titles_out,
+                            char*** solutions_out,
+                            int* item_count_out,
+                            int* option_count_out)
+{
+    if (input == NULL || titles_out == NULL || solutions_out == NULL || item_count_out == NULL
+        || option_count_out == NULL)
+    {
+        return NULL;
+    }
+
+    struct DlxCoverHeader header;
+    if (dlx_read_cover_header(input, &header) != 0)
+    {
+        return NULL;
+    }
+
+    FILE* temp = tmpfile();
+    if (temp == NULL)
+    {
+        return NULL;
+    }
+
+    // Write column titles
+    for (uint32_t col = 0; col < header.column_count; col++)
+    {
+        fprintf(temp, "COL%u%s", col, (col + 1 == header.column_count) ? "\n" : " ");
+    }
+
+    struct DlxRowChunk chunk = {0};
+    while (true)
+    {
+        int status = dlx_read_row_chunk(input, &chunk);
+        if (status == 0)
+            break;
+        if (status == -1)
+        {
+            dlx_free_row_chunk(&chunk);
+            fclose(temp);
+            return NULL;
+        }
+
+        std::vector<char> row(header.column_count, '0');
+        for (int i = 0; i < chunk.entry_count; i++)
+        {
+            uint32_t column = chunk.columns[i];
+            if (column < header.column_count)
+            {
+                row[column] = '1';
+            }
+        }
+
+        for (uint32_t col = 0; col < header.column_count; col++)
+        {
+            fputc(row[col], temp);
+            if (col + 1 == header.column_count)
+            {
+                fputc('\n', temp);
+            }
+            else
+            {
+                fputc(' ', temp);
+            }
+        }
+    }
+
+    dlx_free_row_chunk(&chunk);
+    fflush(temp);
+
+    rewind(temp);
+    int itemCount = getItemCount(temp);
+    rewind(temp);
+    int nodeCount = itemCount + getNodeCount(temp);
+    rewind(temp);
+    int optionCount = getOptionsCount(temp);
+    rewind(temp);
+
+    char** titles = static_cast<char**>(malloc(sizeof(char*) * itemCount));
+    char** solutions = static_cast<char**>(calloc(optionCount, sizeof(char*)));
+    if (titles == NULL || solutions == NULL)
+    {
+        fclose(temp);
+        free(titles);
+        free(solutions);
+        return NULL;
+    }
+
+    struct node* matrix = generateMatrix(temp, titles, nodeCount);
+    fclose(temp);
+
+    if (matrix == NULL)
+    {
+        free(titles);
+        free(solutions);
+        return NULL;
+    }
+
+    *titles_out = titles;
+    *solutions_out = solutions;
+    *item_count_out = itemCount;
+    *option_count_out = optionCount;
+
+    return matrix;
+}

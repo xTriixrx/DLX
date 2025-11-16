@@ -19,7 +19,7 @@ add_compile_options($<$<CONFIG:Release>:-O3>)
 
 find_package(GTest CONFIG REQUIRED)
 
-add_library(dlx_binary STATIC src/core/dlx_binary.cpp)
+add_library(dlx_binary STATIC src/core/dlx_binary.cpp src/core/dlx_server.cpp src/core/dlx_core.cpp)
 target_include_directories(dlx_binary PUBLIC include)
 
 add_library(sudoku_encoder_lib STATIC src/sudoku/encoder/sudoku_encoder.cpp)
@@ -30,7 +30,7 @@ add_library(sudoku_decoder_lib STATIC src/sudoku/decoder/sudoku_decoder.cpp)
 target_link_libraries(sudoku_decoder_lib PUBLIC sudoku_encoder_lib dlx_binary)
 target_include_directories(sudoku_decoder_lib PUBLIC include)
 
-add_executable(dlx src/core/dlx.c)
+add_executable(dlx src/core/dlx.cpp)
 target_include_directories(dlx PRIVATE include)
 target_link_libraries(dlx PRIVATE dlx_binary)
 

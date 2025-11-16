@@ -3,9 +3,6 @@
 
 #include <stdbool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #define GRID_SIZE 9
 #define BOX_SIZE 3
@@ -44,9 +41,5 @@ static inline int sudoku_box_index(int row, int col)
 {
     return (row / BOX_SIZE) * BOX_SIZE + (col / BOX_SIZE);
 }
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

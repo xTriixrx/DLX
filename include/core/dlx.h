@@ -12,10 +12,10 @@
  * Last Modified: 3/12/22                                                                                     *
  **************************************************************************************************************/
 
-char* STR_ONE = "1";
-char* STR_ZERO = "0";
-char* READ_ONLY = "r";
-char* SPACE_DELIMITER = " ";
+extern const char* STR_ONE;
+extern const char* STR_ZERO;
+extern const char* READ_ONLY;
+extern const char* SPACE_DELIMITER;
 
 /**
  * A simple dlx node structure
@@ -40,7 +40,7 @@ void cover(struct node*);
 void unhide(struct node*);
 void uncover(struct node*);
 int getOptionsCount(FILE*);
-char* repeatStr(char*, int);
+char* repeatStr(const char*, int);
 void printItems(struct node*);
 int getOptionNodesCount(FILE*);
 void printSolutions(char**, int, FILE*);

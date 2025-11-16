@@ -1,0 +1,89 @@
+#include "core/dlx.h"
+#include <stdio.h>
+#include <wchar.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <locale.h>
+#include <string.h>
+#include <limits.h>
+#include <sys/stat.h>
+
+/**************************************************************************************************************
+ *                                            DLX Application                                                 *
+ *        DLX is a powerful backtracking, depth-first algorithm that solves exact cover problems.             *
+ *                                                                                                            * 
+ * Version: 0.0.1                                                                                             *
+ * Author: Vincent Nigro                                                                                      *
+ * Last Modified: 3/12/22                                                                                     *
+ **************************************************************************************************************/
+
+/**
+ * A main function that drives the DLX application.
+ * 
+ * @param int Number of command line arguments provided to program.
+ * @param char** Set of command line arguments as strings.
+ * @return void
+ */
+int main(int argc, char** argv)
+{
+    if (argc != 3)
+    {
+        printf("./dlx path/to/cover_file.txt path/to/output_solutions.txt\n");
+        exit(1);
+    }
+
+    // If file does not exist, exit execution.
+    if (!fileExists(argv[1]))
+    {
+        printf("Cover file %s does not exist.\n", argv[1]);
+        exit(1);
+    }
+
+    FILE* cover = fopen(argv[1], READ_ONLY);
+    
+    // If unable to open cover file, exit execution.
+    if (cover == NULL)
+    {
+        printf("Unable to open cover file %s.\n", argv[1]);
+        exit(1);
+    }
+     
+    int itemCount = getItemCount(cover);
+    
+    int nodeCount = itemCount; 
+    nodeCount += getNodeCount(cover);
+    int optionCount = getOptionsCount(cover);
+
+    char** titles = static_cast<char**>(malloc(itemCount * sizeof(char*))); // array will contain item titles
+    char** solutions = static_cast<char**>(malloc(sizeof(char *) * (optionCount))); // array will be used for inserting partials to solution
+    struct node* matrix = generateMatrix(cover, titles, nodeCount);
+    
+    // Close cover file
+    fclose(cover);
+    
+    // Examples of printing functions; tested with test.txt sample
+    //printItems(matrix);
+    //printItemColumn(&matrix[1]);
+    //printOptionRow(&matrix[9]);
+    //printMatrix(matrix, (sizeof(struct node) * nodeCount) / sizeof(struct node), itemCount);
+
+    // Prepare output file for logging solutions
+    const char* solution_output_path = argv[2];
+    FILE* solution_output = fopen(solution_output_path, "w");
+
+    if (solution_output == NULL)
+    {
+        printf("Unable to create output file %s.\n", solution_output_path);
+        freeMemory(matrix, solutions, titles, itemCount);
+        exit(1);
+    }
+
+    // Search and print out found solutions to stdout and output file
+    search(matrix, 0, solutions, solution_output);
+    fclose(solution_output);
+    
+    // Release all malloc'd memory
+    freeMemory(matrix, solutions, titles, itemCount);
+    
+    return EXIT_SUCCESS;
+}

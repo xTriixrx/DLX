@@ -213,8 +213,6 @@ static int write_solution(FILE* output, const int grid[GRID_SIZE][GRID_SIZE], in
     return 0;
 }
 
-extern "C" {
-
 int decode_sudoku_solution(const char* puzzle_path,
                            const char* solution_rows_path,
                            const char* output_path)
@@ -298,5 +296,3 @@ int decode_sudoku_solution(const char* puzzle_path,
     free_candidate_vector(&vector);
     return status;
 }
-
-} // extern "C"
