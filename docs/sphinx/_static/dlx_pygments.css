@@ -1,0 +1,50 @@
+.highlight,
+.highlight pre,
+.highlight code,
+.highlight .hll {
+  background: transparent !important;
+  color: #f2f9ff !important;
+  border: none !important;
+}
+
+.highlight .c,
+.highlight .cm,
+.highlight .c1 {
+  color: #8fb3c9 !important;
+  font-style: italic;
+}
+
+.highlight .k,
+.highlight .kr,
+.highlight .kd {
+  color: #ffc8ff !important;
+  font-weight: 600;
+}
+
+.highlight .n,
+.highlight .nx,
+.highlight .nn {
+  color: #d7e5f7 !important;
+}
+
+.highlight .nf,
+.highlight .na {
+  color: #7be3ff !important;
+}
+
+.highlight .mi,
+.highlight .mf,
+.highlight .mh {
+  color: #ff9f68 !important;
+}
+
+.highlight .s,
+.highlight .sa,
+.highlight .sb {
+  color: #9fffe0 !important;
+}
+
+.highlight .o,
+.highlight .p {
+  color: #b0c7da !important;
+}

@@ -1,0 +1,17 @@
+PROJECT_NAME           = "DLX"
+OUTPUT_DIRECTORY       = docs/build/doxygen
+GENERATE_XML           = YES
+XML_OUTPUT             = xml
+GENERATE_HTML          = NO
+GENERATE_LATEX         = NO
+EXTRACT_ALL            = YES
+JAVADOC_AUTOBRIEF      = YES
+INPUT                  = include src
+FILE_PATTERNS          = *.h \
+                         *.hpp \
+                         *.c \
+                         *.cpp
+RECURSIVE              = YES
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
+INLINE_SOURCES         = YES

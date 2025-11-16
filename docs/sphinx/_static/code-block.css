@@ -1,0 +1,104 @@
+/* Astro-compliant prototype styling with enhanced color cues */
+.astro-mui-prototypes,
+.md-typeset .astro-mui-prototypes,
+.highlight.astro-mui-prototypes,
+.highlight-cpp,
+.md-typeset .highlight-cpp {
+  background: #132b3f;
+  border: 1px solid rgba(0, 242, 195, 0.35);
+  border-radius: 6px;
+  margin: 1.5rem 0;
+  box-shadow: 0 6.25px 11.25px rgba(16, 25, 35, 0.6), 0 0 5px rgba(16, 25, 35, 0.45);
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.3s ease;
+}
+
+.astro-mui-prototypes::before,
+.highlight-cpp::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 40px rgba(0, 181, 226, 0.08);
+}
+
+.astro-mui-prototypes pre,
+.astro-mui-prototypes code,
+.highlight-cpp pre,
+.highlight-cpp code {
+  font-family: "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #f2f9ff;
+  background: transparent !important;
+}
+
+.astro-mui-prototypes pre,
+.highlight-cpp pre {
+  padding: 1.35rem 1.5rem;
+  margin: 0;
+  position: relative;
+  z-index: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Highlight token types with distinct Astro-themed colors */
+.astro-mui-prototypes .na,
+.astro-mui-prototypes .nf,
+.highlight-cpp .na,
+.highlight-cpp .nf {
+  color: #7be3ff;
+}
+
+.astro-mui-prototypes .kt,
+.astro-mui-prototypes .bp,
+.highlight-cpp .kt,
+.highlight-cpp .bp {
+  color: #ffd479;
+}
+
+.astro-mui-prototypes .c1,
+.astro-mui-prototypes .cm,
+.highlight-cpp .c1,
+.highlight-cpp .cm {
+  color: #8fb3c9;
+  font-style: italic;
+}
+
+.astro-mui-prototypes .mi,
+.astro-mui-prototypes .mf,
+.highlight-cpp .mi,
+.highlight-cpp .mf {
+  color: #ff9f68;
+}
+
+.astro-mui-prototypes .p,
+.astro-mui-prototypes .o,
+.highlight-cpp .p,
+.highlight-cpp .o {
+  color: #b0c7da;
+}
+
+.astro-mui-prototypes .s,
+.astro-mui-prototypes .sa,
+.highlight-cpp .s,
+.highlight-cpp .sa {
+  color: #9fffe0;
+}
+
+.astro-mui-prototypes .k,
+.astro-mui-prototypes .kr,
+.highlight-cpp .k,
+.highlight-cpp .kr {
+  color: #ffc8ff;
+  font-weight: 600;
+}
+
+.astro-mui-prototypes:hover,
+.highlight-cpp:hover {
+  border-color: rgba(0, 242, 195, 0.65);
+  box-shadow: 0 8.75px 15px rgba(20, 36, 53, 0.6), 0 0 6.25px rgba(20, 36, 53, 0.45);
+}

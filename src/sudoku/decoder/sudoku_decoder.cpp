@@ -1,10 +1,12 @@
 #include "sudoku/decoder/sudoku_decoder.h"
+#include "core/dlx_binary.h"
 #include "sudoku/encoder/sudoku_encoder.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <vector>
 
 struct candidate_vector
 {
@@ -96,13 +98,14 @@ static bool allowed_digit(int row,
     return !(row_used[row][digit] || col_used[col][digit] || box_used[box][digit]);
 }
 
-static int apply_solution_line(const char* line,
-                               const struct candidate_vector* candidates,
-                               const int base_grid[GRID_SIZE][GRID_SIZE],
-                               const bool base_row_used[GRID_SIZE][DIGIT_COUNT + 1],
-                               const bool base_col_used[GRID_SIZE][DIGIT_COUNT + 1],
-                               const bool base_box_used[GRID_SIZE][DIGIT_COUNT + 1],
-                               int solved_grid[GRID_SIZE][GRID_SIZE])
+static int apply_solution_indices(const uint32_t* indices,
+                                  size_t count,
+                                  const struct candidate_vector* candidates,
+                                  const int base_grid[GRID_SIZE][GRID_SIZE],
+                                  const bool base_row_used[GRID_SIZE][DIGIT_COUNT + 1],
+                                  const bool base_col_used[GRID_SIZE][DIGIT_COUNT + 1],
+                                  const bool base_box_used[GRID_SIZE][DIGIT_COUNT + 1],
+                                  int solved_grid[GRID_SIZE][GRID_SIZE])
 {
     copy_grid(solved_grid, base_grid);
 
@@ -113,28 +116,12 @@ static int apply_solution_line(const char* line,
     copy_usage(col_used, base_col_used);
     copy_usage(box_used, base_box_used);
 
-    char* buffer = strdup(line);
-    if (buffer == NULL)
+    for (size_t idx = 0; idx < count; idx++)
     {
-        fprintf(stderr, "Failed to duplicate solution line\n");
-        return 1;
-    }
-
-    char* token = strtok(buffer, " \t\r\n");
-    while (token != NULL)
-    {
-        if (*token == '\0')
+        uint32_t value = indices[idx];
+        if (value == 0 || value > static_cast<uint32_t>(candidates->size))
         {
-            token = strtok(NULL, " \t\r\n");
-            continue;
-        }
-
-        char* endptr = NULL;
-        long value = strtol(token, &endptr, 10);
-        if (endptr == token || value <= 0 || value > candidates->size)
-        {
-            fprintf(stderr, "Invalid row identifier '%s' in solution\n", token);
-            free(buffer);
+            fprintf(stderr, "Invalid row identifier '%u' in solution\n", value);
             return 1;
         }
 
@@ -151,25 +138,21 @@ static int apply_solution_line(const char* line,
                         digit,
                         row,
                         col);
-                free(buffer);
                 return 1;
             }
 
-            token = strtok(NULL, " \t\r\n");
             continue;
         }
 
         if (solved_grid[row][col] != 0 && solved_grid[row][col] != digit)
         {
             fprintf(stderr, "Conflicting assignment for cell (%d,%d)\n", row, col);
-            free(buffer);
             return 1;
         }
 
         if (!allowed_digit(row, col, digit, row_used, col_used, box_used))
         {
             fprintf(stderr, "Digit %d invalid at cell (%d,%d)\n", digit, row, col);
-            free(buffer);
             return 1;
         }
 
@@ -177,11 +160,7 @@ static int apply_solution_line(const char* line,
         row_used[row][digit] = true;
         col_used[col][digit] = true;
         box_used[sudoku_box_index(row, col)][digit] = true;
-
-        token = strtok(NULL, " \t\r\n");
     }
-
-    free(buffer);
 
     for (int row = 0; row < GRID_SIZE; row++)
     {
@@ -196,6 +175,54 @@ static int apply_solution_line(const char* line,
     }
 
     return 0;
+}
+
+static int apply_solution_line(const char* line,
+                               const struct candidate_vector* candidates,
+                               const int base_grid[GRID_SIZE][GRID_SIZE],
+                               const bool base_row_used[GRID_SIZE][DIGIT_COUNT + 1],
+                               const bool base_col_used[GRID_SIZE][DIGIT_COUNT + 1],
+                               const bool base_box_used[GRID_SIZE][DIGIT_COUNT + 1],
+                               int solved_grid[GRID_SIZE][GRID_SIZE])
+{
+    char* buffer = strdup(line);
+    if (buffer == NULL)
+    {
+        fprintf(stderr, "Failed to duplicate solution line\n");
+        return 1;
+    }
+
+    std::vector<uint32_t> indices;
+    char* token = strtok(buffer, " \t\r\n");
+    while (token != NULL)
+    {
+        if (*token != '\0')
+        {
+            char* endptr = NULL;
+            long value = strtol(token, &endptr, 10);
+            if (endptr == token || value <= 0 || value > candidates->size)
+            {
+                fprintf(stderr, "Invalid row identifier '%s' in solution\n", token);
+                free(buffer);
+                return 1;
+            }
+
+            indices.push_back(static_cast<uint32_t>(value));
+        }
+
+        token = strtok(NULL, " \t\r\n");
+    }
+
+    int result = apply_solution_indices(indices.data(),
+                                        indices.size(),
+                                        candidates,
+                                        base_grid,
+                                        base_row_used,
+                                        base_col_used,
+                                        base_box_used,
+                                        solved_grid);
+    free(buffer);
+    return result;
 }
 
 static int write_solution(FILE* output, const int grid[GRID_SIZE][GRID_SIZE], int solution_index)
@@ -215,7 +242,8 @@ static int write_solution(FILE* output, const int grid[GRID_SIZE][GRID_SIZE], in
 
 int decode_sudoku_solution(const char* puzzle_path,
                            const char* solution_rows_path,
-                           const char* output_path)
+                           const char* output_path,
+                           bool binary_input)
 {
     int grid[GRID_SIZE][GRID_SIZE] = {{0}};
     bool row_used[GRID_SIZE][DIGIT_COUNT + 1] = {{false}};
@@ -234,64 +262,134 @@ int decode_sudoku_solution(const char* puzzle_path,
         return 1;
     }
 
-    FILE* rows_file = fopen(solution_rows_path, "r");
-    if (rows_file == NULL)
-    {
-        fprintf(stderr, "Unable to open solution rows file %s\n", solution_rows_path);
-        free_candidate_vector(&vector);
-        return 1;
-    }
-
     FILE* output = fopen(output_path, "w");
     if (output == NULL)
     {
         fprintf(stderr, "Unable to create output file %s\n", output_path);
-        fclose(rows_file);
         free_candidate_vector(&vector);
         return 1;
     }
 
-    char* line = NULL;
-    size_t len = 0;
-    ssize_t read;
     int solution_index = 1;
     int solved_grid[GRID_SIZE][GRID_SIZE];
     int status = 0;
 
-    while ((read = getline(&line, &len, rows_file)) != -1)
+    if (binary_input)
     {
-        bool has_digit = false;
-        for (ssize_t i = 0; i < read; i++)
+        FILE* rows_file = fopen(solution_rows_path, "rb");
+        if (rows_file == NULL)
         {
-            if (!isspace((unsigned char)line[i]))
+            fprintf(stderr, "Unable to open solution rows file %s\n", solution_rows_path);
+            fclose(output);
+            free_candidate_vector(&vector);
+            return 1;
+        }
+
+        struct DlxSolutionHeader header;
+        if (dlx_read_solution_header(rows_file, &header) != 0)
+        {
+            fprintf(stderr, "Failed to read solution header from %s\n", solution_rows_path);
+            fclose(rows_file);
+            fclose(output);
+            free_candidate_vector(&vector);
+            return 1;
+        }
+
+        if (header.magic != DLX_SOLUTION_MAGIC)
+        {
+            fprintf(stderr, "Invalid solution file magic\n");
+            fclose(rows_file);
+            fclose(output);
+            free_candidate_vector(&vector);
+            return 1;
+        }
+
+        struct DlxSolutionRow row = {0};
+        while (true)
+        {
+            int read_status = dlx_read_solution_row(rows_file, &row);
+            if (read_status == 0)
             {
-                has_digit = true;
                 break;
             }
+            if (read_status == -1)
+            {
+                fprintf(stderr, "Corrupt solution row in %s\n", solution_rows_path);
+                status = 1;
+                break;
+            }
+
+            if (apply_solution_indices(row.row_indices,
+                                       row.entry_count,
+                                       &vector,
+                                       grid,
+                                       row_used,
+                                       col_used,
+                                       box_used,
+                                       solved_grid)
+                != 0)
+            {
+                status = 1;
+                break;
+            }
+
+            write_solution(output, solved_grid, solution_index++);
         }
 
-        if (!has_digit)
+        dlx_free_solution_row(&row);
+        fclose(rows_file);
+    }
+    else
+    {
+        FILE* rows_file = fopen(solution_rows_path, "r");
+        if (rows_file == NULL)
         {
-            continue;
+            fprintf(stderr, "Unable to open solution rows file %s\n", solution_rows_path);
+            fclose(output);
+            free_candidate_vector(&vector);
+            return 1;
         }
 
-        if (apply_solution_line(line,
-                                &vector,
-                                grid,
-                                row_used,
-                                col_used,
-                                box_used,
-                                solved_grid) != 0)
+        char* line = NULL;
+        size_t len = 0;
+        ssize_t read;
+
+        while ((read = getline(&line, &len, rows_file)) != -1)
         {
-            status = 1;
-            break;
+            bool has_digit = false;
+            for (ssize_t i = 0; i < read; i++)
+            {
+                if (!isspace((unsigned char)line[i]))
+                {
+                    has_digit = true;
+                    break;
+                }
+            }
+
+            if (!has_digit)
+            {
+                continue;
+            }
+
+            if (apply_solution_line(line,
+                                    &vector,
+                                    grid,
+                                    row_used,
+                                    col_used,
+                                    box_used,
+                                    solved_grid) != 0)
+            {
+                status = 1;
+                break;
+            }
+
+            write_solution(output, solved_grid, solution_index++);
         }
 
-        write_solution(output, solved_grid, solution_index++);
+        free(line);
+        fclose(rows_file);
     }
 
-    free(line);
-    fclose(rows_file);
     fclose(output);
     free_candidate_vector(&vector);
     return status;

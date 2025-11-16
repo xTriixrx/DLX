@@ -1,12 +1,13 @@
-#include "core/dlx.h"
-#include <stdio.h>
-#include <wchar.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <locale.h>
-#include <string.h>
+#include "core/dlx_binary.h"
+#include <getopt.h>
 #include <limits.h>
+#include <locale.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <wchar.h>
 
 /**************************************************************************************************************
  *                                            DLX Application                                                 *
@@ -24,43 +25,99 @@
  * @param char** Set of command line arguments as strings.
  * @return void
  */
+static void print_usage(void)
+{
+    printf("./dlx [-b] path/to/cover_file path/to/output_solutions\n");
+}
+
 int main(int argc, char** argv)
 {
-    if (argc != 3)
+    bool binary_mode = false;
+    int opt;
+    while ((opt = getopt(argc, argv, "b")) != -1)
     {
-        printf("./dlx path/to/cover_file.txt path/to/output_solutions.txt\n");
+        switch (opt)
+        {
+        case 'b':
+            binary_mode = true;
+            break;
+        default:
+            print_usage();
+            exit(1);
+        }
+    }
+
+    if (argc - optind != 2)
+    {
+        print_usage();
         exit(1);
     }
+
+    const char* cover_path = argv[optind];
+    const char* solution_output_path = argv[optind + 1];
 
     // If file does not exist, exit execution.
-    if (!fileExists(argv[1]))
+    if (!fileExists(const_cast<char*>(cover_path)))
     {
-        printf("Cover file %s does not exist.\n", argv[1]);
+        printf("Cover file %s does not exist.\n", cover_path);
         exit(1);
     }
 
-    FILE* cover = fopen(argv[1], READ_ONLY);
-    
-    // If unable to open cover file, exit execution.
-    if (cover == NULL)
-    {
-        printf("Unable to open cover file %s.\n", argv[1]);
-        exit(1);
-    }
-     
-    int itemCount = getItemCount(cover);
-    
-    int nodeCount = itemCount; 
-    nodeCount += getNodeCount(cover);
-    int optionCount = getOptionsCount(cover);
+    struct node* matrix = NULL;
+    char** titles = NULL;
+    char** solutions = NULL;
+    int itemCount = 0;
+    int optionCount = 0;
 
-    char** titles = static_cast<char**>(malloc(itemCount * sizeof(char*))); // array will contain item titles
-    char** solutions = static_cast<char**>(malloc(sizeof(char *) * (optionCount))); // array will be used for inserting partials to solution
-    struct node* matrix = generateMatrix(cover, titles, nodeCount);
-    
-    // Close cover file
-    fclose(cover);
-    
+    if (binary_mode)
+    {
+        FILE* cover = fopen(cover_path, "rb");
+        if (cover == NULL)
+        {
+            printf("Unable to open cover file %s.\n", cover_path);
+            exit(1);
+        }
+
+        matrix = dlx_read_binary(cover, &titles, &solutions, &itemCount, &optionCount);
+        fclose(cover);
+
+        if (matrix == NULL)
+        {
+            printf("Failed to read binary cover file %s.\n", cover_path);
+            exit(1);
+        }
+    }
+    else
+    {
+        FILE* cover = fopen(cover_path, READ_ONLY);
+
+        // If unable to open cover file, exit execution.
+        if (cover == NULL)
+        {
+            printf("Unable to open cover file %s.\n", cover_path);
+            exit(1);
+        }
+
+        itemCount = getItemCount(cover);
+        int nodeCount = itemCount;
+        nodeCount += getNodeCount(cover);
+        optionCount = getOptionsCount(cover);
+
+        titles = static_cast<char**>(malloc(itemCount * sizeof(char*)));
+        solutions = static_cast<char**>(malloc(sizeof(char*) * optionCount));
+        matrix = generateMatrix(cover, titles, nodeCount);
+
+        fclose(cover);
+
+        if (matrix == NULL)
+        {
+            printf("Unable to generate matrix from cover file %s.\n", cover_path);
+            free(titles);
+            free(solutions);
+            exit(1);
+        }
+    }
+
     // Examples of printing functions; tested with test.txt sample
     //printItems(matrix);
     //printItemColumn(&matrix[1]);
@@ -68,8 +125,7 @@ int main(int argc, char** argv)
     //printMatrix(matrix, (sizeof(struct node) * nodeCount) / sizeof(struct node), itemCount);
 
     // Prepare output file for logging solutions
-    const char* solution_output_path = argv[2];
-    FILE* solution_output = fopen(solution_output_path, "w");
+    FILE* solution_output = fopen(solution_output_path, binary_mode ? "wb" : "w");
 
     if (solution_output == NULL)
     {
@@ -79,7 +135,23 @@ int main(int argc, char** argv)
     }
 
     // Search and print out found solutions to stdout and output file
-    search(matrix, 0, solutions, solution_output);
+    if (binary_mode)
+    {
+        if (dlx_enable_binary_solution_output(solution_output, static_cast<uint32_t>(itemCount)) != 0)
+        {
+            fclose(solution_output);
+            freeMemory(matrix, solutions, titles, itemCount);
+            exit(1);
+        }
+
+        search(matrix, 0, solutions, NULL);
+        dlx_disable_binary_solution_output();
+    }
+    else
+    {
+        search(matrix, 0, solutions, solution_output);
+    }
+
     fclose(solution_output);
     
     // Release all malloc'd memory

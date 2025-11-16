@@ -1,4 +1,5 @@
 #include "core/dlx.h"
+#include "core/dlx_binary.h"
 #include <stdio.h>
 #include <wchar.h>
 #include <unistd.h>
@@ -12,6 +13,93 @@ const char* STR_ONE = "1";
 const char* STR_ZERO = "0";
 const char* READ_ONLY = "r";
 const char* SPACE_DELIMITER = " ";
+
+struct binary_solution_output_ctx
+{
+    FILE* file;
+    uint32_t next_solution_id;
+};
+
+static struct binary_solution_output_ctx g_binary_output = {NULL, 1};
+
+static void write_binary_solution_row(char** solutions, int level)
+{
+    if (g_binary_output.file == NULL || level <= 0)
+    {
+        return;
+    }
+
+    if (level > UINT16_MAX)
+    {
+        fprintf(stderr, "Solution row count exceeds binary format limit\n");
+        return;
+    }
+
+    uint32_t* indices = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * level));
+    if (indices == NULL)
+    {
+        fprintf(stderr, "Unable to allocate binary solution buffer\n");
+        return;
+    }
+
+    for (int i = 0; i < level; i++)
+    {
+        char* endptr = NULL;
+        unsigned long value = strtoul(solutions[i], &endptr, 10);
+        if (endptr == solutions[i] || value == 0 || value > UINT32_MAX)
+        {
+            fprintf(stderr, "Invalid solution row identifier '%s'\n", solutions[i]);
+            free(indices);
+            return;
+        }
+
+        indices[i] = static_cast<uint32_t>(value);
+    }
+
+    if (dlx_write_solution_row(g_binary_output.file,
+                               g_binary_output.next_solution_id,
+                               indices,
+                               static_cast<uint16_t>(level)) != 0)
+    {
+        fprintf(stderr, "Failed to write binary solution row\n");
+        free(indices);
+        return;
+    }
+
+    g_binary_output.next_solution_id += 1;
+    free(indices);
+}
+
+int dlx_enable_binary_solution_output(FILE* output, uint32_t column_count)
+{
+    if (output == NULL)
+    {
+        return -1;
+    }
+
+    struct DlxSolutionHeader header = {
+        .magic = DLX_SOLUTION_MAGIC,
+        .version = DLX_BINARY_VERSION,
+        .flags = 0,
+        .column_count = column_count,
+    };
+
+    if (dlx_write_solution_header(output, &header) != 0)
+    {
+        fprintf(stderr, "Unable to write DLX solution header\n");
+        return -1;
+    }
+
+    g_binary_output.file = output;
+    g_binary_output.next_solution_id = 1;
+    return 0;
+}
+
+void dlx_disable_binary_solution_output(void)
+{
+    g_binary_output.file = NULL;
+    g_binary_output.next_solution_id = 1;
+}
 
 /**************************************************************************************************************
  *                                            DLX Application                                                 *
@@ -618,6 +706,8 @@ void printSolutions(char** solutions, int level, FILE* solution_output)
     {
         fflush(solution_output);
     }
+
+    write_binary_solution_row(solutions, level);
 }
 
 /**

@@ -18,6 +18,7 @@ endif()
 add_compile_options($<$<CONFIG:Release>:-O3>)
 
 find_package(GTest CONFIG REQUIRED)
+find_package(Doxygen)
 
 add_library(dlx_binary STATIC src/core/dlx_binary.cpp src/core/dlx_server.cpp src/core/dlx_core.cpp)
 target_include_directories(dlx_binary PUBLIC include)
@@ -53,7 +54,17 @@ if(BUILD_TESTING)
     set_tests_properties(sudoku_decoder_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
     add_executable(test_dlx_binary tests/test_dlx_binary.cpp)
-    target_link_libraries(test_dlx_binary PRIVATE dlx_binary GTest::gtest_main)
+    target_link_libraries(test_dlx_binary PRIVATE dlx_binary sudoku_encoder_lib GTest::gtest_main)
     add_test(NAME dlx_binary_tests COMMAND test_dlx_binary)
     set_tests_properties(dlx_binary_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif()
+
+if(DOXYGEN_FOUND)
+    add_custom_target(doxygen-docs
+        COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_SOURCE_DIR}/docs/Doxyfile
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Generating Doxygen XML documentation"
+        VERBATIM)
+else()
+    message(STATUS "Doxygen not found. Documentation target will be unavailable.")
 endif()

@@ -1,5 +1,7 @@
 build/
+docs/build/
 coverage/
-docs/
 obj/
+plans/
 .DS_Store
+conan/extensions/commands/__pycache__/

@@ -1,0 +1,425 @@
+:root {
+  --astro-bg-primary: #0b1f2b;
+  --astro-bg-secondary: #132b3f;
+  --astro-surface: #1e3a4f;
+  --astro-outline: #1c4b5f;
+  --astro-text-primary: #f2f9ff;
+  --astro-text-muted: #8fb3c9;
+  --astro-accent: #00b5e2;
+  --astro-accent-strong: #00f2c3;
+  --astro-warning: #ffb347;
+  --astro-danger: #ff5f6d;
+}
+
+body,
+.md-container,
+.md-main,
+.md-sidebar__inner,
+.md-grid {
+  background: var(--astro-bg-primary) !important;
+  color: var(--astro-text-primary);
+}
+
+.md-main__inner.md-grid {
+  margin: 0 !important;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1.5rem;
+  width: 100%;
+  height: 100%;
+}
+
+.md-sidebar.md-sidebar--primary,
+.md-sidebar.md-sidebar--secondary {
+  flex: 0 0 260px;
+  max-width: 260px;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+}
+
+.md-content {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.md-typeset p,
+.md-content p,
+.cpp.function dd p {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.95rem;
+  color: #dbe8f5;
+  line-height: 1.65;
+  letter-spacing: 0.01em;
+}
+
+.md-typeset {
+  color: var(--astro-text-primary);
+  line-height: 1.7;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+  font-weight: 600;
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--astro-text-primary);
+  margin-top: 1.75rem;
+  margin-bottom: 0.8rem;
+}
+
+.md-typeset h1 {
+  color: #7be3ff;
+}
+
+.md-typeset h2 {
+  color: #6ac1ff;
+}
+
+.md-typeset h3 {
+  color: #58a6ff;
+}
+
+.md-typeset h4 {
+  color: #468cff;
+}
+
+.md-typeset h5 {
+  color: #3571ff;
+}
+
+.md-typeset h6 {
+  color: #2357ff;
+}
+
+.md-nav__title,
+.md-nav__item a,
+.md-tabs__item {
+  color: #d7e9ff !important;
+}
+
+.md-nav__item a:hover,
+.md-nav__link--active,
+.md-tabs__item--active {
+  color: #7be3ff !important;
+}
+
+.sig.sig-object.cpp {
+  display: none !important;
+}
+
+.breathe-sectiondef-title.rubric {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--astro-text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.astro-field-member .astro-field-title,
+.astro-field-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--astro-accent);
+  margin-bottom: 0.35rem;
+}
+
+.astro-field-member-desc {
+  font-size: 0.82rem;
+  color: var(--astro-text-muted);
+}
+
+.md-nav .md-nav__item .md-nav__link .md-ellipsis,
+.md-nav .md-nav__item .md-ellipsis {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  display: inline-block !important;
+  width: 100%;
+}
+
+.md-sidebar.md-sidebar--secondary .md-nav.md-nav--secondary,
+.md-sidebar.md-sidebar--secondary .md-nav.md-nav--secondary a,
+.md-sidebar.md-sidebar--secondary .md-nav.md-nav--secondary span {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.9rem;
+  color: #f4fbff !important;
+  letter-spacing: 0.04em;
+}
+
+.md-sidebar.md-sidebar--secondary .md-nav.md-nav--secondary a:hover {
+  color: var(--astro-accent) !important;
+}
+
+.md-sidebar.md-sidebar--secondary .md-nav.md-nav--secondary .md-ellipsis {
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.astro-nav-dropdown {
+  margin: 0.25rem 0 0.75rem 1rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.1);
+  padding-left: 0.75rem;
+}
+
+.astro-nav-dropdown-group {
+  margin: 0;
+}
+
+.astro-nav-dropdown-summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--astro-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.astro-nav-dropdown-summary::-webkit-details-marker {
+  display: none;
+}
+
+.astro-nav-dropdown-summary::before {
+  content: "▸";
+  font-size: 0.7rem;
+  transition: transform 0.2s ease;
+}
+
+.astro-nav-dropdown-group[open] .astro-nav-dropdown-summary::before {
+  transform: rotate(90deg);
+}
+
+.astro-nav-dropdown-list {
+  list-style: none;
+  margin: 0.35rem 0 0.6rem;
+  padding-left: 0.5rem;
+}
+
+.astro-nav-dropdown-item {
+  margin: 0.1rem 0;
+}
+
+.astro-nav-dropdown-link {
+  display: block;
+  font-size: 0.85rem;
+  color: #d7e9ff;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.astro-nav-dropdown-link:hover {
+  color: var(--astro-accent);
+}
+
+.astro-primary-modules {
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  background: rgba(19, 43, 63, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.astro-primary-modules-title {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #7be3ff;
+  margin-bottom: 0.6rem;
+}
+
+.astro-primary-modules-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.astro-primary-modules-link {
+  display: block;
+  padding: 0.35rem 0.25rem;
+  color: #dbe8f5;
+  font-size: 0.92rem;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.astro-primary-modules-link:hover {
+  color: #001421;
+  background: var(--astro-accent);
+}
+
+.md-header,
+.md-tabs {
+  background: var(--astro-bg-secondary) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.md-sidebar__scrollwrap {
+  background: var(--astro-bg-primary);
+}
+
+.md-content {
+  background: var(--astro-bg-secondary);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.35);
+}
+
+.md-typeset a,
+.md-nav__link--active .md-ellipsis {
+  color: #7be3ff;
+}
+
+.md-typeset a:hover {
+  color: var(--astro-accent-strong);
+}
+
+.md-typeset code,
+.md-typeset pre {
+  background: rgba(10, 160, 220, 0.08);
+  border: 1px solid rgba(0, 181, 226, 0.25);
+  color: #e9fbff;
+}
+
+.md-typeset pre {
+  border-radius: 4px;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.4);
+}
+
+.md-button,
+.md-typeset .md-button--primary {
+  background: linear-gradient(120deg, var(--astro-accent), var(--astro-accent-strong));
+  border: none;
+  color: #001421;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 2px;
+}
+
+.md-button:hover,
+.md-typeset .md-button--primary:hover {
+  filter: brightness(1.1);
+}
+
+.md-alert {
+  border-left-width: 4px;
+  border-radius: 2px;
+  background: var(--astro-surface);
+  border-color: var(--astro-outline);
+}
+
+.md-alert--note {
+  border-color: var(--astro-accent);
+}
+
+.md-alert--warning {
+  border-color: var(--astro-warning);
+  color: var(--astro-warning);
+}
+
+.md-alert--danger {
+  border-color: var(--astro-danger);
+  color: var(--astro-danger);
+}
+
+.md-footer,
+.md-footer-meta {
+  background: var(--astro-bg-secondary);
+  color: #d0e7ff;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.md-footer a {
+  color: var(--astro-accent);
+}
+
+.md-search__input {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: var(--astro-text-primary);
+}
+
+.md-search__input::-webkit-input-placeholder {
+  color: var(--astro-text-muted);
+}
+
+.md-table {
+  background: var(--astro-surface);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.md-table tbody tr:nth-child(2n) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.md-nav__title:before,
+.md-nav__link:before {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+hr {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+blockquote {
+  border-left: 4px solid var(--astro-accent);
+  background: rgba(0, 181, 226, 0.08);
+  color: var(--astro-text-primary);
+}
+
+.cpp.function dd p.astro-doc-text {
+  color: #dbe8f5;
+  margin: 0 0 0.85rem;
+  line-height: 1.6;
+}
+
+.cpp.function dd p.astro-doc-text:last-of-type {
+  margin-bottom: 0;
+}
+
+.astro-field-list {
+  margin-top: 1.2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.astro-field {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.astro-field:last-child {
+  border-bottom: none;
+}
+
+.astro-field-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--astro-accent);
+  margin-bottom: 0.35rem;
+}
+
+.astro-field-desc {
+  margin: 0;
+  color: #f2f9ff;
+  line-height: 1.5;
+}
+/* Hide Breathe/Doxygen auto-generated prototypes so the Astro code blocks serve as the source of truth */
