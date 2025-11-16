@@ -1,4 +1,4 @@
-#include "sudoku_matrix.h"
+#include "sudoku/encoder/sudoku_encoder.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,7 +7,7 @@ int main(int argc, char** argv)
 {
     if (argc < 3 || argc > 4)
     {
-        fprintf(stderr, "Usage: ./sudoku_matrix <puzzle_file> <cover_output> [--binary|--text]\n");
+        fprintf(stderr, "Usage: ./sudoku_encoder <puzzle_file> <cover_output> [--binary|--text]\n");
         return EXIT_FAILURE;
     }
 

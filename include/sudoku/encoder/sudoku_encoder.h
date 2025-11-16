@@ -1,5 +1,5 @@
-#ifndef SUDOKU_MATRIX_H
-#define SUDOKU_MATRIX_H
+#ifndef SUDOKU_ENCODER_H
+#define SUDOKU_ENCODER_H
 
 #include <stdbool.h>
 

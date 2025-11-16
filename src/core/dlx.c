@@ -1,4 +1,4 @@
-#include "dlx.h"
+#include "core/dlx.h"
 #include <stdio.h>
 #include <wchar.h>
 #include <unistd.h>

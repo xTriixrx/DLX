@@ -88,19 +88,19 @@ This will emit both `build/coverage/coverage.html` (detailed report) and `build/
 
 ### Execution
 
-#### Sudoku Matrix
+#### Sudoku Encoder
 
-The sudoku_matrix application takes a sudoku problem file and converts the problem to a complete cover matrix representation in an output file. The required parameters to run sudoku_matrix is the following:
+The `sudoku_encoder` application takes a sudoku problem file and converts the problem to a complete cover matrix representation in an output file. The required parameters to run `sudoku_encoder` is the following:
 
 ```bash
-./sudoku_matrix <problem_file> <cover_output_path>
+./sudoku_encoder <problem_file> <cover_output_path>
 ```
 
 An example of this command using one of the provided test files:
 ```bash
-./sudoku_matrix sudoku_test.txt sudoku_cover.txt
+./sudoku_encoder sudoku_test.txt sudoku_cover.txt
 ```
-All `sudoku_test*.txt` files under the `tests/` directory can be used as input into the sudoku_matrix.
+All `sudoku_test*.txt` files under the `tests/` directory can be used as input into the sudoku encoder.
 
 The `sudoku_cover.txt` file under the `tests/` directory shows an example of what one of these cover files look like.
 

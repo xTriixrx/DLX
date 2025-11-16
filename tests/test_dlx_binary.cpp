@@ -1,4 +1,4 @@
-#include "dlx_binary.h"
+#include "core/dlx_binary.h"
 #include <gtest/gtest.h>
 #include <unistd.h>
 

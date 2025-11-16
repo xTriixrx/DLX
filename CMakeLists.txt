@@ -19,36 +19,36 @@ add_compile_options($<$<CONFIG:Release>:-O3>)
 
 find_package(GTest CONFIG REQUIRED)
 
-add_library(dlx_binary STATIC src/dlx_binary.cpp)
+add_library(dlx_binary STATIC src/core/dlx_binary.cpp)
 target_include_directories(dlx_binary PUBLIC include)
 
-add_library(sudoku_matrix_lib STATIC src/sudoku_matrix.cpp)
-target_link_libraries(sudoku_matrix_lib PUBLIC dlx_binary)
-target_include_directories(sudoku_matrix_lib PUBLIC include)
+add_library(sudoku_encoder_lib STATIC src/sudoku/encoder/sudoku_encoder.cpp)
+target_link_libraries(sudoku_encoder_lib PUBLIC dlx_binary)
+target_include_directories(sudoku_encoder_lib PUBLIC include)
 
-add_library(sudoku_decoder_lib STATIC src/sudoku_decoder.cpp)
-target_link_libraries(sudoku_decoder_lib PUBLIC sudoku_matrix_lib dlx_binary)
+add_library(sudoku_decoder_lib STATIC src/sudoku/decoder/sudoku_decoder.cpp)
+target_link_libraries(sudoku_decoder_lib PUBLIC sudoku_encoder_lib dlx_binary)
 target_include_directories(sudoku_decoder_lib PUBLIC include)
 
-add_executable(dlx src/dlx.c)
+add_executable(dlx src/core/dlx.c)
 target_include_directories(dlx PRIVATE include)
 target_link_libraries(dlx PRIVATE dlx_binary)
 
-add_executable(sudoku_matrix src/sudoku_matrix_main.cpp)
-target_link_libraries(sudoku_matrix PRIVATE sudoku_matrix_lib)
+add_executable(sudoku_encoder src/sudoku/encoder/sudoku_encoder_main.cpp)
+target_link_libraries(sudoku_encoder PRIVATE sudoku_encoder_lib)
 
-add_executable(sudoku_decoder src/sudoku_decoder_main.cpp)
+add_executable(sudoku_decoder src/sudoku/decoder/sudoku_decoder_main.cpp)
 target_link_libraries(sudoku_decoder PRIVATE sudoku_decoder_lib)
 
 include(CTest)
 if(BUILD_TESTING)
-    add_executable(test_sudoku_matrix tests/test_sudoku_matrix.cpp)
-    target_link_libraries(test_sudoku_matrix PRIVATE sudoku_matrix_lib dlx_binary GTest::gtest_main)
-    add_test(NAME sudoku_matrix_tests COMMAND test_sudoku_matrix)
-    set_tests_properties(sudoku_matrix_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    add_executable(test_sudoku_encoder tests/test_sudoku_encoder.cpp)
+    target_link_libraries(test_sudoku_encoder PRIVATE sudoku_encoder_lib dlx_binary GTest::gtest_main)
+    add_test(NAME sudoku_encoder_tests COMMAND test_sudoku_encoder)
+    set_tests_properties(sudoku_encoder_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
     add_executable(test_sudoku_decoder tests/test_sudoku_decoder.cpp)
-    target_link_libraries(test_sudoku_decoder PRIVATE sudoku_decoder_lib sudoku_matrix_lib dlx_binary GTest::gtest_main)
+    target_link_libraries(test_sudoku_decoder PRIVATE sudoku_decoder_lib sudoku_encoder_lib dlx_binary GTest::gtest_main)
     add_test(NAME sudoku_decoder_tests COMMAND test_sudoku_decoder)
     set_tests_properties(sudoku_decoder_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 

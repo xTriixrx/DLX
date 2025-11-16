@@ -12,12 +12,11 @@
     "C_Cpp.default.includePath": [
         "${workspaceFolder}/**",
         "/opt/homebrew/include",
-        "/opt/homebrew/include/gtest"
+        "/opt/homebrew/include/gtest",
+        "/opt/homebrew/opt/llvm/include"
     ],
-    "C_Cpp.default.compilerArgs": [
-        "-isystem",
-        "/opt/homebrew/include",
-        "-isystem",
-        "/opt/homebrew/include/gtest"
-    ]
+    "C_Cpp.default.compilerPath": "/opt/homebrew/opt/llvm/bin/clang++",
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+    "C_Cpp.default.cppStandard": "c++17",
+    "C_Cpp.default.cStandard": "c11"
 }

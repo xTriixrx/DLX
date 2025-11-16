@@ -1,5 +1,5 @@
-#include "sudoku_decoder.h"
-#include "sudoku_matrix.h"
+#include "sudoku/decoder/sudoku_decoder.h"
+#include "sudoku/encoder/sudoku_encoder.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
