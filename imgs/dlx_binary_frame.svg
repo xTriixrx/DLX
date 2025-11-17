@@ -1,0 +1,197 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='1000' height='800' viewBox='0 0 1000 800'>
+<style>text{font-family:'Fira Sans','Segoe UI',sans-serif;} .label{font-size:13px;fill:white;font-weight:500;} .title{font-size:16px;font-weight:bold;fill:#ffffff;} .legend{font-size:12px;fill:#111;}</style>
+<text class='title' x='40' y='30'>DLXB Cover Header</text>
+<line x1='40' y1='40' x2='40' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='80' y1='40' x2='80' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='120' y1='40' x2='120' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='160' y1='40' x2='160' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='200' y1='40' x2='200' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='240' y1='40' x2='240' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='280' y1='40' x2='280' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='320' y1='40' x2='320' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='360' y1='40' x2='360' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='400' y1='40' x2='400' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='440' y1='40' x2='440' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='480' y1='40' x2='480' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='520' y1='40' x2='520' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='560' y1='40' x2='560' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='600' y1='40' x2='600' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='640' y1='40' x2='640' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='680' y1='40' x2='680' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='720' y1='40' x2='720' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='760' y1='40' x2='760' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='800' y1='40' x2='800' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='840' y1='40' x2='840' y2='100' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<rect x='40' y='40' width='160' height='60' rx='6' ry='6' fill='#004c6d' stroke='black' stroke-width='1' />
+<text class='label' x='120.0' y='64.0' dominant-baseline='middle' text-anchor='middle'>magic ("DLXB")</text>
+<text class='label' x='120.0' y='80.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='200' y='40' width='80' height='60' rx='6' ry='6' fill='#006f8e' stroke='black' stroke-width='1' />
+<text class='label' x='240.0' y='64.0' dominant-baseline='middle' text-anchor='middle'>version</text>
+<text class='label' x='240.0' y='80.0' dominant-baseline='middle' text-anchor='middle'>16 bits</text>
+<rect x='280' y='40' width='80' height='60' rx='6' ry='6' fill='#008bad' stroke='black' stroke-width='1' />
+<text class='label' x='320.0' y='64.0' dominant-baseline='middle' text-anchor='middle'>flags</text>
+<text class='label' x='320.0' y='80.0' dominant-baseline='middle' text-anchor='middle'>16 bits</text>
+<rect x='360' y='40' width='160' height='60' rx='6' ry='6' fill='#2ec4b6' stroke='black' stroke-width='1' />
+<text class='label' x='440.0' y='64.0' dominant-baseline='middle' text-anchor='middle'>column_count</text>
+<text class='label' x='440.0' y='80.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='520' y='40' width='160' height='60' rx='6' ry='6' fill='#5adbff' stroke='black' stroke-width='1' />
+<text class='label' x='600.0' y='64.0' dominant-baseline='middle' text-anchor='middle'>row_count</text>
+<text class='label' x='600.0' y='80.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='680' y='40' width='160' height='60' rx='6' ry='6' fill='#9ef0ff' stroke='black' stroke-width='1' />
+<text class='label' x='760.0' y='64.0' dominant-baseline='middle' text-anchor='middle'>option_node_count</text>
+<text class='label' x='760.0' y='80.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<text class='title' x='40' y='170'>Row Chunk Example</text>
+<line x1='40' y1='180' x2='40' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='80' y1='180' x2='80' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='120' y1='180' x2='120' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='160' y1='180' x2='160' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='200' y1='180' x2='200' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='240' y1='180' x2='240' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='280' y1='180' x2='280' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='320' y1='180' x2='320' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='360' y1='180' x2='360' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='400' y1='180' x2='400' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='440' y1='180' x2='440' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='480' y1='180' x2='480' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='520' y1='180' x2='520' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='560' y1='180' x2='560' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='600' y1='180' x2='600' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='640' y1='180' x2='640' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='680' y1='180' x2='680' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='720' y1='180' x2='720' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='760' y1='180' x2='760' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='800' y1='180' x2='800' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='840' y1='180' x2='840' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='880' y1='180' x2='880' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='920' y1='180' x2='920' y2='240' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<rect x='40' y='180' width='160' height='60' rx='6' ry='6' fill='#6a4c93' stroke='black' stroke-width='1' />
+<text class='label' x='120.0' y='204.0' dominant-baseline='middle' text-anchor='middle'>row_id</text>
+<text class='label' x='120.0' y='220.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='200' y='180' width='80' height='60' rx='6' ry='6' fill='#b5179e' stroke='black' stroke-width='1' />
+<text class='label' x='240.0' y='204.0' dominant-baseline='middle' text-anchor='middle'>entry_count</text>
+<text class='label' x='240.0' y='220.0' dominant-baseline='middle' text-anchor='middle'>16 bits</text>
+<rect x='280' y='180' width='160' height='60' rx='6' ry='6' fill='#f72585' stroke='black' stroke-width='1' />
+<text class='label' x='360.0' y='204.0' dominant-baseline='middle' text-anchor='middle'>columns[0]</text>
+<text class='label' x='360.0' y='220.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='440' y='180' width='160' height='60' rx='6' ry='6' fill='#ff5d8f' stroke='black' stroke-width='1' />
+<text class='label' x='520.0' y='204.0' dominant-baseline='middle' text-anchor='middle'>columns[1]</text>
+<text class='label' x='520.0' y='220.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='600' y='180' width='160' height='60' rx='6' ry='6' fill='#ff85a1' stroke='black' stroke-width='1' />
+<text class='label' x='680.0' y='204.0' dominant-baseline='middle' text-anchor='middle'>columns[2]</text>
+<text class='label' x='680.0' y='220.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='760' y='180' width='160' height='60' rx='6' ry='6' fill='#ffc2d1' stroke='black' stroke-width='1' />
+<text class='label' x='840.0' y='204.0' dominant-baseline='middle' text-anchor='middle'>columns[3]</text>
+<text class='label' x='840.0' y='220.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<text class='title' x='40' y='310'>DLXS Solution Header</text>
+<line x1='40' y1='320' x2='40' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='80' y1='320' x2='80' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='120' y1='320' x2='120' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='160' y1='320' x2='160' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='200' y1='320' x2='200' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='240' y1='320' x2='240' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='280' y1='320' x2='280' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='320' y1='320' x2='320' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='360' y1='320' x2='360' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='400' y1='320' x2='400' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='440' y1='320' x2='440' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='480' y1='320' x2='480' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='520' y1='320' x2='520' y2='380' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<rect x='40' y='320' width='160' height='60' rx='6' ry='6' fill='#003049' stroke='black' stroke-width='1' />
+<text class='label' x='120.0' y='344.0' dominant-baseline='middle' text-anchor='middle'>magic ("DLXS")</text>
+<text class='label' x='120.0' y='360.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='200' y='320' width='80' height='60' rx='6' ry='6' fill='#0077b6' stroke='black' stroke-width='1' />
+<text class='label' x='240.0' y='344.0' dominant-baseline='middle' text-anchor='middle'>version</text>
+<text class='label' x='240.0' y='360.0' dominant-baseline='middle' text-anchor='middle'>16 bits</text>
+<rect x='280' y='320' width='80' height='60' rx='6' ry='6' fill='#0096c7' stroke='black' stroke-width='1' />
+<text class='label' x='320.0' y='344.0' dominant-baseline='middle' text-anchor='middle'>flags</text>
+<text class='label' x='320.0' y='360.0' dominant-baseline='middle' text-anchor='middle'>16 bits</text>
+<rect x='360' y='320' width='160' height='60' rx='6' ry='6' fill='#48cae4' stroke='black' stroke-width='1' />
+<text class='label' x='440.0' y='344.0' dominant-baseline='middle' text-anchor='middle'>column_count</text>
+<text class='label' x='440.0' y='360.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<text class='title' x='40' y='450'>Solution Row Example</text>
+<line x1='40' y1='460' x2='40' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='80' y1='460' x2='80' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='120' y1='460' x2='120' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='160' y1='460' x2='160' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='200' y1='460' x2='200' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='240' y1='460' x2='240' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='280' y1='460' x2='280' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='320' y1='460' x2='320' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='360' y1='460' x2='360' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='400' y1='460' x2='400' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='440' y1='460' x2='440' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='480' y1='460' x2='480' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='520' y1='460' x2='520' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='560' y1='460' x2='560' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='600' y1='460' x2='600' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='640' y1='460' x2='640' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='680' y1='460' x2='680' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='720' y1='460' x2='720' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='760' y1='460' x2='760' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='800' y1='460' x2='800' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='840' y1='460' x2='840' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='880' y1='460' x2='880' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<line x1='920' y1='460' x2='920' y2='520' stroke='#e0e0e0' stroke-width='1' stroke-dasharray='4 4' />
+<rect x='40' y='460' width='160' height='60' rx='6' ry='6' fill='#a27cfe' stroke='black' stroke-width='1' />
+<text class='label' x='120.0' y='484.0' dominant-baseline='middle' text-anchor='middle'>solution_id</text>
+<text class='label' x='120.0' y='500.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='200' y='460' width='80' height='60' rx='6' ry='6' fill='#c77dff' stroke='black' stroke-width='1' />
+<text class='label' x='240.0' y='484.0' dominant-baseline='middle' text-anchor='middle'>entry_count</text>
+<text class='label' x='240.0' y='500.0' dominant-baseline='middle' text-anchor='middle'>16 bits</text>
+<rect x='280' y='460' width='160' height='60' rx='6' ry='6' fill='#e0aaff' stroke='black' stroke-width='1' />
+<text class='label' x='360.0' y='484.0' dominant-baseline='middle' text-anchor='middle'>row_index[0]</text>
+<text class='label' x='360.0' y='500.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='440' y='460' width='160' height='60' rx='6' ry='6' fill='#ffd6ff' stroke='black' stroke-width='1' />
+<text class='label' x='520.0' y='484.0' dominant-baseline='middle' text-anchor='middle'>row_index[1]</text>
+<text class='label' x='520.0' y='500.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='600' y='460' width='160' height='60' rx='6' ry='6' fill='#fde4ff' stroke='black' stroke-width='1' />
+<text class='label' x='680.0' y='484.0' dominant-baseline='middle' text-anchor='middle'>row_index[2]</text>
+<text class='label' x='680.0' y='500.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='760' y='460' width='160' height='60' rx='6' ry='6' fill='#fff0f6' stroke='black' stroke-width='1' />
+<text class='label' x='840.0' y='484.0' dominant-baseline='middle' text-anchor='middle'>row_index[3]</text>
+<text class='label' x='840.0' y='500.0' dominant-baseline='middle' text-anchor='middle'>32 bits</text>
+<rect x='40' y='600' width='20' height='20' fill='#004c6d' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='615'>magic ("DLXB")</text>
+<rect x='40' y='628' width='20' height='20' fill='#006f8e' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='643'>version</text>
+<rect x='40' y='656' width='20' height='20' fill='#008bad' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='671'>flags</text>
+<rect x='40' y='684' width='20' height='20' fill='#2ec4b6' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='699'>column_count</text>
+<rect x='40' y='712' width='20' height='20' fill='#5adbff' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='727'>row_count</text>
+<rect x='40' y='740' width='20' height='20' fill='#9ef0ff' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='755'>option_node_count</text>
+<rect x='40' y='768' width='20' height='20' fill='#6a4c93' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='783'>row_id</text>
+<rect x='40' y='796' width='20' height='20' fill='#b5179e' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='811'>entry_count</text>
+<rect x='40' y='824' width='20' height='20' fill='#f72585' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='839'>columns[0]</text>
+<rect x='40' y='852' width='20' height='20' fill='#ff5d8f' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='867'>columns[1]</text>
+<rect x='40' y='880' width='20' height='20' fill='#ff85a1' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='895'>columns[2]</text>
+<rect x='40' y='908' width='20' height='20' fill='#ffc2d1' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='923'>columns[3]</text>
+<rect x='40' y='936' width='20' height='20' fill='#003049' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='951'>magic ("DLXS")</text>
+<rect x='40' y='964' width='20' height='20' fill='#0077b6' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='979'>version</text>
+<rect x='40' y='992' width='20' height='20' fill='#0096c7' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='1007'>flags</text>
+<rect x='40' y='1020' width='20' height='20' fill='#48cae4' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='1035'>column_count</text>
+<rect x='40' y='1048' width='20' height='20' fill='#a27cfe' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='1063'>solution_id</text>
+<rect x='40' y='1076' width='20' height='20' fill='#c77dff' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='1091'>entry_count</text>
+<rect x='40' y='1104' width='20' height='20' fill='#e0aaff' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='1119'>row_index[0]</text>
+<rect x='40' y='1132' width='20' height='20' fill='#ffd6ff' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='1147'>row_index[1]</text>
+<rect x='40' y='1160' width='20' height='20' fill='#fde4ff' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='1175'>row_index[2]</text>
+<rect x='40' y='1188' width='20' height='20' fill='#fff0f6' stroke='black' stroke-width='1' />
+<text class='legend' x='68' y='1203'>row_index[3]</text>
+</svg>

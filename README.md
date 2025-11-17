@@ -227,6 +227,62 @@ This command uses binary I/O everywhere (no flags required) and writes the final
 
 Both snippets demonstrate the `-` convention: encoder writes the cover matrix to stdout, `dlx` consumes stdin and streams row identifiers, and the decoder reconstructs solutions directly into the final answers file.
 
+#### DLX Binary Interchange (DLXB/DLXS)
+
+The DLX toolchain ships with a compact binary format designed for fast streaming between the encoder, solver, and decoder. Two record types exist:
+
+| Identifier | Magic | Purpose |
+|------------|-------|---------|
+| `DLXB`     | `0x444C5842` | Cover matrix serialization (produced by `sudoku_encoder`, consumed by `dlx`). |
+| `DLXS`     | `0x444C5853` | Solution stream (written by `dlx`, consumed by `sudoku_decoder`). |
+
+All integers are stored in network byte order (big-endian). An entire `DLXB` file is composed of a single header followed by a sequence of row chunks:
+
+| Field | Bits | Description |
+|-------|------|-------------|
+| `magic` | 32 | ASCII `"DLXB"` sentinel. |
+| `version` | 16 | Current value `1` (`DLX_BINARY_VERSION`). |
+| `flags` | 16 | Reserved; writers set to `0`. |
+| `column_count` | 32 | Number of constraint columns in the cover matrix. |
+| `row_count` | 32 | Number of option rows serialized (for statistics). |
+| `option_node_count` | 32 | Total node count in the sparse representation. |
+
+Each row chunk immediately follows the header and uses the layout:
+
+1. `row_id` (32 bits) — monotonically increasing identifier for the row.
+2. `entry_count` (16 bits) — number of column indices present (always 4 for Sudoku).
+3. `columns[i]` (`entry_count` × 32 bits) — zero-based column indices marking the `1` entries.
+
+Readers call `dlx_read_row_chunk` until it returns `0`, which indicates EOF. Because the `entry_count` field is 16-bit, individual rows can reference up to 65,535 columns, which is well beyond the Sudoku requirement.
+
+`DLXS` solution files mirror the cover header with a lighter structure:
+
+| Field | Bits | Description |
+|-------|------|-------------|
+| `magic` | 32 | ASCII `"DLXS"`. |
+| `version` | 16 | `DLX_BINARY_VERSION`. |
+| `flags` | 16 | Reserved for future metadata. |
+| `column_count` | 32 | Column count required to interpret row identifiers. |
+
+Every solution row then contains:
+
+1. `solution_id` (32 bits) — sequential ID assigned by the solver.
+2. `entry_count` (16 bits) — number of row identifiers composing the solution.
+3. `row_index[i]` (`entry_count` × 32 bits) — the `row_id` values emitted in the `DLXB` stream.
+
+If `entry_count` is zero the decoder has reached the end of the solution list. The decoder enforces Sudoku constraints by replaying the row indices against the original puzzle metadata.
+
+The following diagram highlights the byte layout of the DLXB and DLXS sections (boxes are drawn left-to-right from the most significant bits down):
+
+![DLX binary layout](imgs/dlx_binary_layout.svg)
+
+For a higher fidelity look at how a specific DLXB/DLXS frame maps into contiguous 32-bit words (with per-field legends), see the side-by-side diagrams below:
+
+<p align="center">
+  <img src="imgs/dlx_binary_frame_dlxb.svg" alt="DLXB frame grid" width="48%" />
+  <img src="imgs/dlx_binary_frame_dlxs.svg" alt="DLXS frame grid" width="48%" />
+</p>
+
 ### Documentation
 
 This project uses Doxygen to extract C++ APIs into XML, then Sphinx+Breathe to transform that into HTML. The generated site is grouped into Core, Sudoku, and Tooling sections with a full API reference for quick navigation.
