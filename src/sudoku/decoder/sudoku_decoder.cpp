@@ -262,10 +262,12 @@ int decode_sudoku_solution(const char* puzzle_path,
         return 1;
     }
 
-    FILE* output = fopen(output_path, "w");
+    const char* resolved_output_path = (output_path == NULL) ? "-" : output_path;
+    bool write_to_stdout = (strcmp(resolved_output_path, "-") == 0);
+    FILE* output = write_to_stdout ? stdout : fopen(resolved_output_path, "w");
     if (output == NULL)
     {
-        fprintf(stderr, "Unable to create output file %s\n", output_path);
+        fprintf(stderr, "Unable to create output file %s\n", resolved_output_path);
         free_candidate_vector(&vector);
         return 1;
     }
@@ -274,82 +276,73 @@ int decode_sudoku_solution(const char* puzzle_path,
     int solved_grid[GRID_SIZE][GRID_SIZE];
     int status = 0;
 
+    const char* resolved_solution_path = (solution_rows_path == NULL) ? "-" : solution_rows_path;
+    bool read_from_stdin = (strcmp(resolved_solution_path, "-") == 0);
+    const char* solution_mode = binary_input ? "rb" : "r";
+    FILE* rows_file = read_from_stdin ? stdin : fopen(resolved_solution_path, solution_mode);
+    if (rows_file == NULL)
+    {
+        fprintf(stderr, "Unable to open solution rows file %s\n", resolved_solution_path);
+        if (!write_to_stdout)
+        {
+            fclose(output);
+        }
+        free_candidate_vector(&vector);
+        return 1;
+    }
+
     if (binary_input)
     {
-        FILE* rows_file = fopen(solution_rows_path, "rb");
-        if (rows_file == NULL)
-        {
-            fprintf(stderr, "Unable to open solution rows file %s\n", solution_rows_path);
-            fclose(output);
-            free_candidate_vector(&vector);
-            return 1;
-        }
-
         struct DlxSolutionHeader header;
         if (dlx_read_solution_header(rows_file, &header) != 0)
         {
-            fprintf(stderr, "Failed to read solution header from %s\n", solution_rows_path);
-            fclose(rows_file);
-            fclose(output);
-            free_candidate_vector(&vector);
-            return 1;
+            fprintf(stderr, "Failed to read solution header from %s\n", resolved_solution_path);
+            status = 1;
         }
-
-        if (header.magic != DLX_SOLUTION_MAGIC)
+        else if (header.magic != DLX_SOLUTION_MAGIC)
         {
             fprintf(stderr, "Invalid solution file magic\n");
-            fclose(rows_file);
-            fclose(output);
-            free_candidate_vector(&vector);
-            return 1;
+            status = 1;
         }
-
-        struct DlxSolutionRow row = {0};
-        while (true)
+        else
         {
-            int read_status = dlx_read_solution_row(rows_file, &row);
-            if (read_status == 0)
+            struct DlxSolutionRow row = {0};
+            while (status == 0)
             {
-                break;
-            }
-            if (read_status == -1)
-            {
-                fprintf(stderr, "Corrupt solution row in %s\n", solution_rows_path);
-                status = 1;
-                break;
+                int read_status = dlx_read_solution_row(rows_file, &row);
+                if (read_status == 0)
+                {
+                    break;
+                }
+                if (read_status == -1)
+                {
+                    fprintf(stderr, "Corrupt solution row in %s\n", resolved_solution_path);
+                    status = 1;
+                    break;
+                }
+
+                if (apply_solution_indices(row.row_indices,
+                                           row.entry_count,
+                                           &vector,
+                                           grid,
+                                           row_used,
+                                           col_used,
+                                           box_used,
+                                           solved_grid)
+                    != 0)
+                {
+                    status = 1;
+                    break;
+                }
+
+                write_solution(output, solved_grid, solution_index++);
             }
 
-            if (apply_solution_indices(row.row_indices,
-                                       row.entry_count,
-                                       &vector,
-                                       grid,
-                                       row_used,
-                                       col_used,
-                                       box_used,
-                                       solved_grid)
-                != 0)
-            {
-                status = 1;
-                break;
-            }
-
-            write_solution(output, solved_grid, solution_index++);
+            dlx_free_solution_row(&row);
         }
-
-        dlx_free_solution_row(&row);
-        fclose(rows_file);
     }
     else
     {
-        FILE* rows_file = fopen(solution_rows_path, "r");
-        if (rows_file == NULL)
-        {
-            fprintf(stderr, "Unable to open solution rows file %s\n", solution_rows_path);
-            fclose(output);
-            free_candidate_vector(&vector);
-            return 1;
-        }
-
         char* line = NULL;
         size_t len = 0;
         ssize_t read;
@@ -387,10 +380,21 @@ int decode_sudoku_solution(const char* puzzle_path,
         }
 
         free(line);
+    }
+
+    if (!read_from_stdin)
+    {
         fclose(rows_file);
     }
 
-    fclose(output);
+    if (!write_to_stdout)
+    {
+        fclose(output);
+    }
+    else
+    {
+        fflush(output);
+    }
     free_candidate_vector(&vector);
     return status;
 }

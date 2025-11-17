@@ -7,30 +7,28 @@
 static void print_usage(void)
 {
     fprintf(stderr,
-            "Usage: ./sudoku_encoder [options] <puzzle_file> <cover_output>\n"
+            "Usage: ./sudoku_encoder [options] <puzzle_file> [cover_output]\n"
             "Options:\n"
-            "  -b, --binary   Write the cover output in binary format\n"
-            "  -t, --text     Write the cover output in text format (default)\n");
+            "  -t, --text     Write the cover output in text format (default is binary)\n"
+            "Hints:\n"
+            "  Use '-' for <puzzle_file> to read from stdin.\n"
+            "  Omit cover_output or pass '-' to stream the cover matrix to stdout.\n");
 }
 
 int main(int argc, char** argv)
 {
-    bool binary_format = false;
+    bool binary_format = true;
 
     static struct option long_options[] = {
-        {"binary", no_argument, NULL, 'b'},
         {"text", no_argument, NULL, 't'},
         {0, 0, 0, 0},
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "bt", long_options, NULL)) != -1)
+    while ((opt = getopt_long(argc, argv, "t", long_options, NULL)) != -1)
     {
         switch (opt)
         {
-        case 'b':
-            binary_format = true;
-            break;
         case 't':
             binary_format = false;
             break;
@@ -40,14 +38,15 @@ int main(int argc, char** argv)
         }
     }
 
-    if (argc - optind != 2)
+    int positional = argc - optind;
+    if (positional < 1 || positional > 2)
     {
         print_usage();
         return EXIT_FAILURE;
     }
 
     const char* puzzle_path = argv[optind];
-    const char* cover_path = argv[optind + 1];
+    const char* cover_path = positional == 2 ? argv[optind + 1] : "-";
 
     if (convert_sudoku_to_cover(puzzle_path, cover_path, binary_format) != 0)
     {

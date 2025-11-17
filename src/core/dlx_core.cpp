@@ -21,6 +21,12 @@ struct binary_solution_output_ctx
 };
 
 static struct binary_solution_output_ctx g_binary_output = {NULL, 1};
+static bool g_suppress_stdout_output = false;
+
+void dlx_set_stdout_suppressed(bool suppressed)
+{
+    g_suppress_stdout_output = suppressed;
+}
 
 static void write_binary_solution_row(char** solutions, int level)
 {
@@ -682,23 +688,22 @@ void printMatrix(const struct node* matrix, int arr_len, int item_len)
  */
 void printSolutions(char** solutions, int level, FILE* solution_output)
 {
+    bool write_console =
+        !g_suppress_stdout_output && (solution_output == NULL || solution_output != stdout);
+    bool write_stream = (solution_output != NULL);
+
     for (int i = 0; i < level; i++)
     {
-        if ((i + 1) == level)
+        const bool last_value = ((i + 1) == level);
+        const char* fmt = last_value ? "%s\n" : "%s ";
+
+        if (write_console)
         {
-            printf("%s\n", solutions[i]);
-            if (solution_output != NULL)
-            {
-                fprintf(solution_output, "%s\n", solutions[i]);
-            }
+            printf(fmt, solutions[i]);
         }
-        else
+        if (write_stream)
         {
-            printf("%s ", solutions[i]);
-            if (solution_output != NULL)
-            {
-                fprintf(solution_output, "%s ", solutions[i]);
-            }
+            fprintf(solution_output, fmt, solutions[i]);
         }
     }
 

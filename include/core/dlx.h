@@ -63,5 +63,6 @@ void handleSpacerNodes(struct node*, int*, int, int);
 struct node insertItem(struct node*, struct node*, char*);
 int dlx_enable_binary_solution_output(FILE* output, uint32_t column_count);
 void dlx_disable_binary_solution_output(void);
+void dlx_set_stdout_suppressed(bool suppressed);
 
 #endif

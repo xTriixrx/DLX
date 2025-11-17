@@ -19,6 +19,7 @@ add_compile_options($<$<CONFIG:Release>:-O3>)
 
 find_package(GTest CONFIG REQUIRED)
 find_package(Doxygen)
+find_package(Python3 COMPONENTS Interpreter)
 
 add_library(dlx_binary STATIC src/core/dlx_binary.cpp src/core/dlx_server.cpp src/core/dlx_core.cpp)
 target_include_directories(dlx_binary PUBLIC include)
@@ -57,6 +58,18 @@ if(BUILD_TESTING)
     target_link_libraries(test_dlx_binary PRIVATE dlx_binary sudoku_encoder_lib GTest::gtest_main)
     add_test(NAME dlx_binary_tests COMMAND test_dlx_binary)
     set_tests_properties(dlx_binary_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+    add_executable(test_sudoku_pipeline tests/test_sudoku_pipeline.cpp)
+    add_dependencies(test_sudoku_pipeline dlx sudoku_encoder sudoku_decoder)
+    target_link_libraries(test_sudoku_pipeline PRIVATE GTest::gtest_main)
+    add_test(NAME sudoku_pipeline_tests COMMAND test_sudoku_pipeline)
+    set_tests_properties(sudoku_pipeline_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+    if(Python3_Interpreter_FOUND)
+        add_test(NAME conan_execute_tests
+                 COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_conan_execute.py)
+        set_tests_properties(conan_execute_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    endif()
 endif()
 
 if(DOXYGEN_FOUND)

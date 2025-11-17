@@ -39,8 +39,8 @@ typedef int (*sudoku_candidate_handler)(int row, int col, int digit, void* ctx);
 /**
  * @brief Convert a Sudoku puzzle into an exact-cover matrix.
  *
- * @param puzzle_path Path to the textual puzzle definition (81 characters).
- * @param cover_path Destination cover file.
+ * @param puzzle_path Path to the textual puzzle definition (81 characters). Pass "-" to read stdin.
+ * @param cover_path Destination cover file. Pass "-" to write to stdout.
  * @param binary_format Set to true to emit the DLX binary cover file.
  * @return 0 on success, non-zero on parse or IO failure.
  */

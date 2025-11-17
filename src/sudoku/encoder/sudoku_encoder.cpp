@@ -35,8 +35,15 @@ static void build_column_indices(int row, int col, int digit, uint32_t indices[4
 
 int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path, bool binary_format)
 {
+    if (puzzle_path == NULL || cover_path == NULL)
+    {
+        fprintf(stderr, "Puzzle path and cover path are required\n");
+        return 1;
+    }
+
+    bool write_to_stdout = (strcmp(cover_path, "-") == 0);
     const char* mode = binary_format ? "wb" : "w";
-    FILE* output = fopen(cover_path, mode);
+    FILE* output = write_to_stdout ? stdout : fopen(cover_path, mode);
     if (output == NULL)
     {
         fprintf(stderr, "Unable to create cover file %s\n", cover_path);
@@ -50,8 +57,11 @@ int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path, boo
 
     if (load_sudoku_state(puzzle_path, grid, row_used, col_used, box_used) != 0)
     {
-        fclose(output);
-        remove(cover_path);
+        if (!write_to_stdout)
+        {
+            fclose(output);
+            remove(cover_path);
+        }
         return 1;
     }
 
@@ -67,12 +77,22 @@ int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path, boo
 
     if (status != 0)
     {
-        fclose(output);
-        remove(cover_path);
+        if (!write_to_stdout)
+        {
+            fclose(output);
+            remove(cover_path);
+        }
         return 1;
     }
 
-    fclose(output);
+    if (!write_to_stdout)
+    {
+        fclose(output);
+    }
+    else
+    {
+        fflush(output);
+    }
     return 0;
 }
 
@@ -159,7 +179,14 @@ int load_sudoku_state(const char* puzzle_path,
                       bool col_used[GRID_SIZE][DIGIT_COUNT + 1],
                       bool box_used[GRID_SIZE][DIGIT_COUNT + 1])
 {
-    FILE* input = fopen(puzzle_path, "r");
+    if (puzzle_path == NULL)
+    {
+        fprintf(stderr, "Puzzle path is required\n");
+        return 1;
+    }
+
+    bool use_stdin = (strcmp(puzzle_path, "-") == 0);
+    FILE* input = use_stdin ? stdin : fopen(puzzle_path, "r");
     if (input == NULL)
     {
         fprintf(stderr, "Unable to open puzzle file %s\n", puzzle_path);
@@ -167,7 +194,10 @@ int load_sudoku_state(const char* puzzle_path,
     }
 
     int result = parse_puzzle(input, grid, row_used, col_used, box_used);
-    fclose(input);
+    if (!use_stdin)
+    {
+        fclose(input);
+    }
     return result;
 }
 
