@@ -231,10 +231,11 @@ Both snippets demonstrate the `-` convention: encoder writes the cover matrix to
 
 The DLX toolchain ships with a compact binary format designed for fast streaming between the encoder, solver, and decoder. Two record types exist:
 
-| Identifier | Magic | Purpose |
-|------------|-------|---------|
-| `DLXB`     | `0x444C5842` | Cover matrix serialization (produced by `sudoku_encoder`, consumed by `dlx`). |
-| `DLXS`     | `0x444C5853` | Solution stream (written by `dlx`, consumed by `sudoku_decoder`). |
+<table align="center">
+<tr><th>Identifier</th><th>Magic</th><th>Purpose</th></tr>
+<tr><td align="center"><code>DLXB</code></td><td align="center"><code>0x444C5842</code></td><td>Cover matrix serialization (produced by <code>sudoku_encoder</code>, consumed by <code>dlx</code>).</td></tr>
+<tr><td align="center"><code>DLXS</code></td><td align="center"><code>0x444C5853</code></td><td>Solution stream (written by <code>dlx</code>, consumed by <code>sudoku_decoder</code>).</td></tr>
+</table>
 
 All integers are stored in network byte order (big-endian).
 
@@ -242,19 +243,22 @@ All integers are stored in network byte order (big-endian).
 
  An entire `DLXB` minor frame is composed of a single header followed by a sequence of row chunks:
 
-| Field | Bits | Description |
-|-------|------|-------------|
-| `magic` | 32 | ASCII `"DLXB"` sentinel. |
-| `version` | 16 | Current value `1` (`DLX_BINARY_VERSION`). |
-| `flags` | 16 | Reserved; writers set to `0`. |
-| `column_count` | 32 | Number of constraint columns in the cover matrix. |
-| `row_count` | 32 | Number of option rows serialized (for statistics). |
+<table align="center">
+<tr><th>Field</th><th>Bits</th><th>Description</th></tr>
+<tr><td align="center"><code>magic</code></td><td align="center">32</td><td>ASCII <code>\"DLXB\"</code> sentinel.</td></tr>
+<tr><td align="center"><code>version</code></td><td align="center">16</td><td>Current value <code>1</code> (<code>DLX_BINARY_VERSION</code>).</td></tr>
+<tr><td align="center"><code>flags</code></td><td align="center">16</td><td>Reserved; writers set to <code>0</code>.</td></tr>
+<tr><td align="center"><code>column_count</code></td><td align="center">32</td><td>Number of constraint columns in the cover matrix.</td></tr>
+<tr><td align="center"><code>row_count</code></td><td align="center">32</td><td>Number of option rows serialized (for statistics).</td></tr>
+</table>
 
 <p align="center">
   <img src="imgs/dlx_binary_frame_dlxb.svg" alt="DLXB frame grid" width="420"/>
 </p>
 
-Each row chunk immediately follows the header and uses the layout:
+##### DLXB Binary Row Chunk
+
+Each `DLXB` row chunk immediately follows the header and uses the layout:
 
 1. `row_id` (32 bits) — monotonically increasing identifier for the row.
 2. `entry_count` (16 bits) — number of column indices present (always 4 for Sudoku).
@@ -262,20 +266,25 @@ Each row chunk immediately follows the header and uses the layout:
 
 Readers call `dlx_read_row_chunk` until it returns `0`, which indicates EOF. Because the `entry_count` field is 16-bit, individual rows can reference up to 65,535 columns, which is well beyond the Sudoku requirement.
 
+#### DLXS Binary Minor Frame
+
 `DLXS` solution files mirror the cover header with a lighter structure:
 
-| Field | Bits | Description |
-|-------|------|-------------|
-| `magic` | 32 | ASCII `"DLXS"`. |
-| `version` | 16 | `DLX_BINARY_VERSION`. |
-| `flags` | 16 | Reserved for future metadata. |
-| `column_count` | 32 | Column count required to interpret row identifiers. |
+<table align="center">
+<tr><th>Field</th><th>Bits</th><th>Description</th></tr>
+<tr><td align="center"><code>magic</code></td><td align="center">32</td><td>ASCII <code>\"DLXS\"</code>.</td></tr>
+<tr><td align="center"><code>version</code></td><td align="center">16</td><td><code>DLX_BINARY_VERSION</code>.</td></tr>
+<tr><td align="center"><code>flags</code></td><td align="center">16</td><td>Reserved for future metadata.</td></tr>
+<tr><td align="center"><code>column_count</code></td><td align="center">32</td><td>Column count required to interpret row identifiers.</td></tr>
+</table>
 
 <p align="center">
   <img src="imgs/dlx_binary_frame_dlxs.svg" alt="DLXS frame grid" width="420"/>
 </p>
 
-Every solution row then contains:
+##### DLXS Binary Solution Row
+
+Each `DLXS` solution row immediately follows the header and uses the layout:
 
 1. `solution_id` (32 bits) — sequential ID assigned by the solver.
 2. `entry_count` (16 bits) — number of row identifiers composing the solution.
