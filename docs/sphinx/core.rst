@@ -71,7 +71,6 @@ Structs
        uint16_t flags;
        uint32_t column_count;
        uint32_t row_count;
-       uint32_t option_node_count;
    };
 
 .. doxygenstruct:: DlxCoverHeader

@@ -39,7 +39,6 @@ int dlx_write_cover_header(FILE* output, const struct DlxCoverHeader* header)
     writable.flags = dlx_htons(header->flags);
     writable.column_count = dlx_htonl(header->column_count);
     writable.row_count = dlx_htonl(header->row_count);
-    writable.option_node_count = dlx_htonl(header->option_node_count);
 
     size_t written = fwrite(&writable, sizeof(writable), 1, output);
     return written == 1 ? 0 : -1;
@@ -64,7 +63,6 @@ int dlx_read_cover_header(FILE* input, struct DlxCoverHeader* header)
     header->flags = dlx_ntohs(readable.flags);
     header->column_count = dlx_ntohl(readable.column_count);
     header->row_count = dlx_ntohl(readable.row_count);
-    header->option_node_count = dlx_ntohl(readable.option_node_count);
     return 0;
 }
 

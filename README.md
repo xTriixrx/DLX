@@ -227,7 +227,7 @@ This command uses binary I/O everywhere (no flags required) and writes the final
 
 Both snippets demonstrate the `-` convention: encoder writes the cover matrix to stdout, `dlx` consumes stdin and streams row identifiers, and the decoder reconstructs solutions directly into the final answers file.
 
-#### DLX Binary Interchange (DLXB/DLXS)
+### DLX Binary Interchange (DLXB/DLXS)
 
 The DLX toolchain ships with a compact binary format designed for fast streaming between the encoder, solver, and decoder. Two record types exist:
 
@@ -236,7 +236,11 @@ The DLX toolchain ships with a compact binary format designed for fast streaming
 | `DLXB`     | `0x444C5842` | Cover matrix serialization (produced by `sudoku_encoder`, consumed by `dlx`). |
 | `DLXS`     | `0x444C5853` | Solution stream (written by `dlx`, consumed by `sudoku_decoder`). |
 
-All integers are stored in network byte order (big-endian). An entire `DLXB` file is composed of a single header followed by a sequence of row chunks:
+All integers are stored in network byte order (big-endian).
+
+#### DLXB Binary Minor Frame
+
+ An entire `DLXB` minor frame is composed of a single header followed by a sequence of row chunks:
 
 | Field | Bits | Description |
 |-------|------|-------------|
@@ -245,7 +249,10 @@ All integers are stored in network byte order (big-endian). An entire `DLXB` fil
 | `flags` | 16 | Reserved; writers set to `0`. |
 | `column_count` | 32 | Number of constraint columns in the cover matrix. |
 | `row_count` | 32 | Number of option rows serialized (for statistics). |
-| `option_node_count` | 32 | Total node count in the sparse representation. |
+
+<p align="center">
+  <img src="imgs/dlx_binary_frame_dlxb.svg" alt="DLXB frame grid" width="420"/>
+</p>
 
 Each row chunk immediately follows the header and uses the layout:
 
@@ -264,6 +271,10 @@ Readers call `dlx_read_row_chunk` until it returns `0`, which indicates EOF. Bec
 | `flags` | 16 | Reserved for future metadata. |
 | `column_count` | 32 | Column count required to interpret row identifiers. |
 
+<p align="center">
+  <img src="imgs/dlx_binary_frame_dlxs.svg" alt="DLXS frame grid" width="420"/>
+</p>
+
 Every solution row then contains:
 
 1. `solution_id` (32 bits) — sequential ID assigned by the solver.
@@ -276,12 +287,7 @@ The following diagram highlights the byte layout of the DLXB and DLXS sections (
 
 ![DLX binary layout](imgs/dlx_binary_layout.svg)
 
-For a higher fidelity look at how a specific DLXB/DLXS frame maps into contiguous 32-bit words (with per-field legends), see the side-by-side diagrams below:
-
-<p align="center">
-  <img src="imgs/dlx_binary_frame_dlxb.svg" alt="DLXB frame grid" width="48%" />
-  <img src="imgs/dlx_binary_frame_dlxs.svg" alt="DLXS frame grid" width="48%" />
-</p>
+For a higher fidelity look at how a specific DLXB/DLXS frame maps into contiguous 32-bit words (with per-field legends), review the diagrams above in their respective sections.
 
 ### Documentation
 

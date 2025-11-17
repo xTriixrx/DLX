@@ -303,7 +303,6 @@ static int write_binary_cover(FILE* output,
         .flags = 0,
         .column_count = COLUMN_COUNT,
         .row_count = 0,
-        .option_node_count = 0,
     };
 
     if (dlx_write_cover_header(output, &header) != 0)

@@ -21,7 +21,6 @@ void write_header_and_chunk(const char* path)
         .flags = 0x2,
         .column_count = 10,
         .row_count = 2,
-        .option_node_count = 6,
     };
 
     ASSERT_EQ(dlx_write_cover_header(file, &header), 0);
@@ -53,7 +52,6 @@ TEST(DlxBinaryTest, RoundTrip)
     EXPECT_EQ(header.flags, 0x2);
     EXPECT_EQ(header.column_count, 10u);
     EXPECT_EQ(header.row_count, 2u);
-    EXPECT_EQ(header.option_node_count, 6u);
 
     struct DlxRowChunk chunk = {0};
     int status = dlx_read_row_chunk(file, &chunk);

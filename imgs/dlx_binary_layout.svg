@@ -20,10 +20,6 @@
 <line class='grid' x1='976' y1='80' x2='976' y2='140' />
 <line class='grid' x1='1040' y1='80' x2='1040' y2='140' />
 <line class='grid' x1='1104' y1='80' x2='1104' y2='140' />
-<line class='grid' x1='1168' y1='80' x2='1168' y2='140' />
-<line class='grid' x1='1232' y1='80' x2='1232' y2='140' />
-<line class='grid' x1='1296' y1='80' x2='1296' y2='140' />
-<line class='grid' x1='1360' y1='80' x2='1360' y2='140' />
 <rect x='80' y='80' width='256' height='60' rx='8' ry='8' fill='#004c6d' opacity='0.95' stroke='black' stroke-width='1' />
 <text class='label' x='208.0' y='104.0' text-anchor='middle'>magic ("DLXB")</text>
 <text class='bits' x='208.0' y='122.0' text-anchor='middle'>32 bits</text>
@@ -39,9 +35,6 @@
 <rect x='864' y='80' width='256' height='60' rx='8' ry='8' fill='#5adbff' opacity='0.95' stroke='black' stroke-width='1' />
 <text class='label' x='992.0' y='104.0' text-anchor='middle'>row_count</text>
 <text class='bits' x='992.0' y='122.0' text-anchor='middle'>32 bits</text>
-<rect x='1124' y='80' width='256' height='60' rx='8' ry='8' fill='#9ef0ff' opacity='0.95' stroke='black' stroke-width='1' />
-<text class='label' x='1252.0' y='104.0' text-anchor='middle'>option_node_count</text>
-<text class='bits' x='1252.0' y='122.0' text-anchor='middle'>32 bits</text>
 <text class='section' x='80' y='205'>DLX Row Chunk</text>
 <line class='grid' x1='80' y1='220' x2='80' y2='280' />
 <line class='grid' x1='144' y1='220' x2='144' y2='280' />
@@ -157,12 +150,10 @@
 <text class='legendtext' x='114' y='690'>magic ("DLXB")</text>
 <rect x='80' y='706' width='26' height='26' fill='#5adbff' stroke='black' stroke-width='1' />
 <text class='legendtext' x='114' y='726'>row_count</text>
-<rect x='80' y='742' width='26' height='26' fill='#9ef0ff' stroke='black' stroke-width='1' />
-<text class='legendtext' x='114' y='762'>option_node_count</text>
-<rect x='80' y='778' width='26' height='26' fill='#6a4c93' stroke='black' stroke-width='1' />
-<text class='legendtext' x='114' y='798'>row_id</text>
-<rect x='80' y='814' width='26' height='26' fill='#f72585' stroke='black' stroke-width='1' />
-<text class='legendtext' x='114' y='834'>columns[i]</text>
+<rect x='80' y='742' width='26' height='26' fill='#6a4c93' stroke='black' stroke-width='1' />
+<text class='legendtext' x='114' y='762'>row_id</text>
+<rect x='80' y='778' width='26' height='26' fill='#f72585' stroke='black' stroke-width='1' />
+<text class='legendtext' x='114' y='798'>columns[i]</text>
 <text class='legendtitle' x='864.0' y='656' text-anchor='middle'>Base Legend</text>
 <rect x='804.0' y='670' width='26' height='26' fill='#0077b6' stroke='black' stroke-width='1' />
 <text class='legendtext' x='838.0' y='690'>version</text>

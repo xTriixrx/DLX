@@ -24,7 +24,6 @@ struct DlxCoverHeader
     uint16_t flags;             /**< Reserved flags for future binary features. */
     uint32_t column_count;      /**< Number of constraint columns in the matrix. */
     uint32_t row_count;         /**< Number of option rows present in the file. */
-    uint32_t option_node_count; /**< Total node count backing the row data. */
 };
 
 /**
