@@ -9,10 +9,19 @@
 #include <limits.h>
 #include <sys/stat.h>
 
-const char* STR_ONE = "1";
-const char* STR_ZERO = "0";
+namespace {
+
+constexpr char STR_ONE[] = "1";
+constexpr char STR_ZERO[] = "0";
+constexpr char SPACE_DELIMITER[] = " ";
+
+} // namespace
+
+namespace dlx {
+
 const char* READ_ONLY = "r";
-const char* SPACE_DELIMITER = " ";
+
+namespace {
 
 struct binary_solution_output_ctx
 {
@@ -20,10 +29,12 @@ struct binary_solution_output_ctx
     uint32_t next_solution_id;
 };
 
-static struct binary_solution_output_ctx g_binary_output = {NULL, 1};
-static bool g_suppress_stdout_output = false;
+binary_solution_output_ctx g_binary_output{nullptr, 1};
+bool g_suppress_stdout_output = false;
 
-void dlx_set_stdout_suppressed(bool suppressed)
+} // namespace
+
+void Core::dlx_set_stdout_suppressed(bool suppressed)
 {
     g_suppress_stdout_output = suppressed;
 }
@@ -76,7 +87,7 @@ static void write_binary_solution_row(char** solutions, int level)
     free(indices);
 }
 
-int dlx_enable_binary_solution_output(FILE* output, uint32_t column_count)
+int Core::dlx_enable_binary_solution_output(FILE* output, uint32_t column_count)
 {
     if (output == NULL)
     {
@@ -101,7 +112,7 @@ int dlx_enable_binary_solution_output(FILE* output, uint32_t column_count)
     return 0;
 }
 
-void dlx_disable_binary_solution_output(void)
+void Core::dlx_disable_binary_solution_output(void)
 {
     g_binary_output.file = NULL;
     g_binary_output.next_solution_id = 1;
@@ -125,7 +136,7 @@ void dlx_disable_binary_solution_output(void)
  * @param char** A char pointer to pointers containing partials of a solutions.
  * @return void
  */ 
-void search(struct node* head, int level, char** solutions, FILE* solution_output)
+void Core::search(struct node* head, int level, char** solutions, FILE* solution_output)
 {
     // If all items have been covered, output a found solution.
     if (head->right == head)
@@ -233,7 +244,7 @@ void search(struct node* head, int level, char** solutions, FILE* solution_outpu
  * @param struct node* A node pointer to some item column.
  * @return void
  */
-void cover(struct node* i)
+void Core::cover(struct node* i)
 {
     struct node *p, *l, *r;
     
@@ -263,7 +274,7 @@ void cover(struct node* i)
  * @param struct node* A node pointer to some option node.
  * @return void
  */
-void hide(struct node* p)
+void Core::hide(struct node* p)
 {
     struct node *q, *x, *u, *d;
     
@@ -299,7 +310,7 @@ void hide(struct node* p)
  * @param struct node* A node pointer to some item column.
  * @return void
  */
-void uncover(struct node* i)
+void Core::uncover(struct node* i)
 {
     struct node *p, *l, *r;
 
@@ -329,7 +340,7 @@ void uncover(struct node* i)
  * @param struct node* A node pointer to some option node.
  * @return void
  */ 
-void unhide(struct node* p)
+void Core::unhide(struct node* p)
 {
     struct node *q, *x, *u, *d;
 
@@ -367,7 +378,7 @@ void unhide(struct node* p)
  * @param struct node* A node pointer to the head of the matrix.
  * @return struct node* Returns the address to the item node with the smallest option length.
  */ 
-struct node* pickItem(struct node* head)
+struct node* Core::pickItem(struct node* head)
 {
     int theta = INT_MAX;
     struct node* i = NULL;
@@ -407,7 +418,7 @@ struct node* pickItem(struct node* head)
  * @param int An integer representing the total number of nodes that need to be created.
  * @return struct node* Returns the address of the malloc'd matrix structure.
  */ 
-struct node* generateMatrix(FILE* cover, char** titles, int nodeCount)
+struct node* Core::generateMatrix(FILE* cover, char** titles, int nodeCount)
 {
     ssize_t read;
     size_t len = 0;
@@ -517,7 +528,7 @@ struct node* generateMatrix(FILE* cover, char** titles, int nodeCount)
  * @param char* A char pointer to the item line which is the first line in the cover file.
  * @return int Returns the current node count of how many item nodes were created from this method.
  */ 
-int generateTitles(struct node* matrix, char** titles, char* titleLine)
+int Core::generateTitles(struct node* matrix, char** titles, char* titleLine)
 {
     char* newlinePtr;
     int currNodeCount = 0;
@@ -569,7 +580,7 @@ int generateTitles(struct node* matrix, char** titles, char* titleLine)
  * @param int A copy of the current node count in the generation process.
  * @param int A copy of the previous option's node count in the generation process.
  */ 
-void handleSpacerNodes(struct node* matrix, int* spaceNodeCount, int currNodeCount, int prevRowCount)
+void Core::handleSpacerNodes(struct node* matrix, int* spaceNodeCount, int currNodeCount, int prevRowCount)
 {
     // Top of spacer nodes should always point to matrix[0], data represents row number.
     matrix[currNodeCount + 1].top = matrix;
@@ -594,7 +605,7 @@ void handleSpacerNodes(struct node* matrix, int* spaceNodeCount, int currNodeCou
  * @param int An integer representing the total number of nodes that need to be created.
  * @return struct node* Returns the address of the malloc'd matrix structure.
  */ 
-struct node* generateHeadNode(int nodeCount)
+struct node* Core::generateHeadNode(int nodeCount)
 {
     struct node* matrix = static_cast<struct node*>(malloc(sizeof(struct node) * (nodeCount + 1)));
 
@@ -615,7 +626,7 @@ struct node* generateHeadNode(int nodeCount)
  * @param int The number of item nodes (columns) defined in the matrix.
  * @return void
  */ 
-void printMatrix(const struct node* matrix, int arr_len, int item_len)
+void Core::printMatrix(const struct node* matrix, int arr_len, int item_len)
 {
     for (int i = 1; i < arr_len; i++)
     {
@@ -686,7 +697,7 @@ void printMatrix(const struct node* matrix, int arr_len, int item_len)
  * A printing function used by the main search method that prints out the found solutions to stdout. Found solutions
  * could be piped to a file or to some other application for post-processing.
  */
-void printSolutions(char** solutions, int level, FILE* solution_output)
+void Core::printSolutions(char** solutions, int level, FILE* solution_output)
 {
     bool write_console =
         !g_suppress_stdout_output && (solution_output == NULL || solution_output != stdout);
@@ -723,7 +734,7 @@ void printSolutions(char** solutions, int level, FILE* solution_output)
  * @param struct node* A pointer to the beginning of the matrix.
  * @return void
  */
-void printItems(struct node* head)
+void Core::printItems(struct node* head)
 {
     struct node* curr = head;
 
@@ -750,7 +761,7 @@ void printItems(struct node* head)
  * @param struct node* A pointer to the item node in a given column.
  * @return void
  */
-void printItemColumn(struct node* itemColumn)
+void Core::printItemColumn(struct node* itemColumn)
 {
     struct node* curr = itemColumn;
 
@@ -777,7 +788,7 @@ void printItemColumn(struct node* itemColumn)
  * @param struct node* A pointer to the first node in a given option row.
  * @return void
  */ 
-void printOptionRow(struct node* optionRow)
+void Core::printOptionRow(struct node* optionRow)
 {
     struct node* curr = optionRow;
 
@@ -810,7 +821,7 @@ void printOptionRow(struct node* optionRow)
  * @param FILE* A file pointer to a file which contains a cover definition.
  * @return int Returns the number of nodes within the defined cover definition.
  */
-int getNodeCount(FILE* coverFile)
+int Core::getNodeCount(FILE* coverFile)
 {
     size_t len = 0;
     ssize_t read = 0;
@@ -844,7 +855,7 @@ int getNodeCount(FILE* coverFile)
  * @param FILE* A file pointer to a file which contains a cover definition.
  * @return int Returns the number of items (column headers) defined in the cover file.
  */
-int getItemCount(FILE* coverFile)
+int Core::getItemCount(FILE* coverFile)
 {
     size_t len = 0;
     ssize_t read = 0;
@@ -890,7 +901,7 @@ int getItemCount(FILE* coverFile)
  * @param FILE* A file pointer to a file which contains a cover definition.
  * @return int Returns the number of lines defined in the cover file; associated with number of spacer nodes.
  */
-int getOptionsCount(FILE* coverFile)
+int Core::getOptionsCount(FILE* coverFile)
 {
     size_t len = 0;
     ssize_t read = 0;
@@ -918,7 +929,7 @@ int getOptionsCount(FILE* coverFile)
  * @param FILE* A file pointer to a file which contains a cover definition.
  * @return int Returns the number of option nodes defined in the cover file.
  */ 
-int getOptionNodesCount(FILE* coverFile)
+int Core::getOptionNodesCount(FILE* coverFile)
 {
     size_t len = 0;
     ssize_t read = 0;
@@ -957,7 +968,7 @@ int getOptionNodesCount(FILE* coverFile)
  * @param int The number of times the character pointer should be repeated.
  * @return char* A malloc'd repeated character array of the provided parameter.
  */ 
-char* repeatStr(const char* str, int count)
+char* Core::repeatStr(const char* str, int count)
 {
     if (count == 0)
     {
@@ -990,7 +1001,7 @@ char* repeatStr(const char* str, int count)
  * @param int The number of titles in the titles array.
  * @return void
  */ 
-void freeMemory(struct node* matrix, char** solutions, char** titles, int itemCount)
+void Core::freeMemory(struct node* matrix, char** solutions, char** titles, int itemCount)
 {
     for (int i = 0; i < itemCount; i++)
     {
@@ -1008,8 +1019,10 @@ void freeMemory(struct node* matrix, char** solutions, char** titles, int itemCo
  * @param char* A char pointer for a path to a file.
  * @return void
  */ 
-int fileExists(char* file)
+int Core::fileExists(char* file)
 {
     struct stat buffer;
     return (stat(file, &buffer) == 0);
 }
+
+} // namespace dlx

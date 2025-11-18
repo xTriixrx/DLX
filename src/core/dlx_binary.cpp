@@ -425,11 +425,11 @@ struct node* dlx_read_binary(FILE* input,
     fflush(temp);
 
     rewind(temp);
-    int itemCount = getItemCount(temp);
+    int itemCount = dlx::Core::getItemCount(temp);
     rewind(temp);
-    int nodeCount = itemCount + getNodeCount(temp);
+    int nodeCount = itemCount + dlx::Core::getNodeCount(temp);
     rewind(temp);
-    int optionCount = getOptionsCount(temp);
+    int optionCount = dlx::Core::getOptionsCount(temp);
     rewind(temp);
 
     char** titles = static_cast<char**>(malloc(sizeof(char*) * itemCount));
@@ -442,7 +442,7 @@ struct node* dlx_read_binary(FILE* input,
         return NULL;
     }
 
-    struct node* matrix = generateMatrix(temp, titles, nodeCount);
+    struct node* matrix = dlx::Core::generateMatrix(temp, titles, nodeCount);
     fclose(temp);
 
     if (matrix == NULL)

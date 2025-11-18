@@ -49,10 +49,11 @@ Supporting pieces such as documentation helpers, Conan extensions, and binary-in
 
    tools
 
-Full API Reference
-------------------
+Header Reference
+----------------
 
-Need the entire auto-generated API? Jump straight into the Doxygen index.
+Need to browse the published headers without digging through the repository? Use the literal
+reference view below.
 
 .. toctree::
    :maxdepth: 1

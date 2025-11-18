@@ -187,11 +187,11 @@ TEST(DlxBinaryTest, DlxSolvesFromBinaryCoverAndEmitsBinarySolutions)
 
     FILE* binary_output = tmpfile();
     ASSERT_NE(binary_output, nullptr);
-    ASSERT_EQ(dlx_enable_binary_solution_output(binary_output, static_cast<uint32_t>(itemCount)), 0);
+    ASSERT_EQ(dlx::Core::dlx_enable_binary_solution_output(binary_output, static_cast<uint32_t>(itemCount)), 0);
 
     testing::internal::CaptureStdout();
-    search(matrix, 0, solutions, NULL);
-    dlx_disable_binary_solution_output();
+    dlx::Core::search(matrix, 0, solutions, NULL);
+    dlx::Core::dlx_disable_binary_solution_output();
     std::string stdout_capture = testing::internal::GetCapturedStdout();
     EXPECT_EQ(stdout_capture, expected_rows);
 
@@ -216,7 +216,7 @@ TEST(DlxBinaryTest, DlxSolvesFromBinaryCoverAndEmitsBinarySolutions)
 
     dlx_free_solution_row(&row);
     fclose(binary_output);
-    freeMemory(matrix, solutions, titles, itemCount);
+    dlx::Core::freeMemory(matrix, solutions, titles, itemCount);
     remove(cover_template);
 }
 

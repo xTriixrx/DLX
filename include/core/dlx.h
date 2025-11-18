@@ -13,11 +13,6 @@
  * Last Modified: 3/12/22                                                                                     *
  **************************************************************************************************************/
 
-extern const char* STR_ONE;
-extern const char* STR_ZERO;
-extern const char* READ_ONLY;
-extern const char* SPACE_DELIMITER;
-
 /**
  * @brief Intrusive Dancing Links node used to model the sparse exact-cover matrix.
  *
@@ -37,32 +32,44 @@ struct node
     struct node* right;   /**< Pointer to the next node in the row. */
 };
 
-int fileExists(char*);
-int getNodeCount(FILE*);
-int getItemCount(FILE*);
-void hide(struct node*);
-void cover(struct node*);
-void unhide(struct node*);
-void uncover(struct node*);
-int getOptionsCount(FILE*);
-char* repeatStr(const char*, int);
-void printItems(struct node*);
-int getOptionNodesCount(FILE*);
-void printSolutions(char**, int, FILE*);
-void printOptionRow(struct node*);
-struct node* generateHeadNode(int);
-void printItemColumn(struct node*);
-struct node* pickItem(struct node*);
-void insertIntoSet(struct node*, int);
-void search(struct node*, int, char**, FILE*);
-void printMatrix(const struct node*, int, int);
-struct node* generateMatrix(FILE*, char**, int);
-int generateTitles(struct node*, char**, char*);
-void freeMemory(struct node*, char**, char**, int);
-void handleSpacerNodes(struct node*, int*, int, int);
-struct node insertItem(struct node*, struct node*, char*);
-int dlx_enable_binary_solution_output(FILE* output, uint32_t column_count);
-void dlx_disable_binary_solution_output(void);
-void dlx_set_stdout_suppressed(bool suppressed);
+namespace dlx {
+
+extern const char* READ_ONLY;
+
+class Core
+{
+public:
+    static int fileExists(char*);
+    static int getNodeCount(FILE*);
+    static int getItemCount(FILE*);
+    static int getOptionsCount(FILE*);
+    static struct node* generateMatrix(FILE*, char**, int);
+    static void search(struct node*, int, char**, FILE*);
+    static void freeMemory(struct node*, char**, char**, int);
+    static int dlx_enable_binary_solution_output(FILE* output, uint32_t column_count);
+    static void dlx_disable_binary_solution_output(void);
+    static void dlx_set_stdout_suppressed(bool suppressed);
+
+private:
+    static void hide(struct node*);
+    static void cover(struct node*);
+    static void unhide(struct node*);
+    static void uncover(struct node*);
+    static char* repeatStr(const char*, int);
+    static void printItems(struct node*);
+    static int getOptionNodesCount(FILE*);
+    static void printSolutions(char**, int, FILE*);
+    static void printOptionRow(struct node*);
+    static struct node* generateHeadNode(int);
+    static void printItemColumn(struct node*);
+    static struct node* pickItem(struct node*);
+    static void insertIntoSet(struct node*, int);
+    static void printMatrix(const struct node*, int, int);
+    static int generateTitles(struct node*, char**, char*);
+    static void handleSpacerNodes(struct node*, int*, int, int);
+    static struct node insertItem(struct node*, struct node*, char*);
+};
+
+} // namespace dlx
 
 #endif

@@ -91,7 +91,7 @@ int main(int argc, char** argv)
     const char* solution_output_path = positional == 2 ? argv[optind + 1] : "-";
 
     // If file does not exist, exit execution (unless streaming).
-    if (strcmp(cover_path, "-") != 0 && !fileExists(const_cast<char*>(cover_path)))
+    if (strcmp(cover_path, "-") != 0 && !dlx::Core::fileExists(const_cast<char*>(cover_path)))
     {
         printf("Cover file %s does not exist.\n", cover_path);
         exit(1);
@@ -148,7 +148,7 @@ int main(int argc, char** argv)
         }
         else
         {
-            cover_stream = fopen(cover_path, READ_ONLY);
+            cover_stream = fopen(cover_path, dlx::READ_ONLY);
             close_cover = true;
         }
 
@@ -159,14 +159,14 @@ int main(int argc, char** argv)
             exit(1);
         }
 
-        itemCount = getItemCount(cover_stream);
+        itemCount = dlx::Core::getItemCount(cover_stream);
         int nodeCount = itemCount;
-        nodeCount += getNodeCount(cover_stream);
-        optionCount = getOptionsCount(cover_stream);
+        nodeCount += dlx::Core::getNodeCount(cover_stream);
+        optionCount = dlx::Core::getOptionsCount(cover_stream);
 
         titles = static_cast<char**>(malloc(itemCount * sizeof(char*)));
         solutions = static_cast<char**>(malloc(sizeof(char*) * optionCount));
-        matrix = generateMatrix(cover_stream, titles, nodeCount);
+        matrix = dlx::Core::generateMatrix(cover_stream, titles, nodeCount);
 
         if (close_cover && cover_stream != NULL)
         {
@@ -195,7 +195,7 @@ int main(int argc, char** argv)
     if (solution_output == NULL)
     {
         printf("Unable to create output file %s.\n", solution_output_path);
-        freeMemory(matrix, solutions, titles, itemCount);
+        dlx::Core::freeMemory(matrix, solutions, titles, itemCount);
         exit(1);
     }
 
@@ -203,29 +203,29 @@ int main(int argc, char** argv)
     bool suppress_stdout = binary_mode && write_to_stdout;
     if (suppress_stdout)
     {
-        dlx_set_stdout_suppressed(true);
+        dlx::Core::dlx_set_stdout_suppressed(true);
     }
 
     if (binary_mode)
     {
-        if (dlx_enable_binary_solution_output(solution_output, static_cast<uint32_t>(itemCount)) != 0)
+        if (dlx::Core::dlx_enable_binary_solution_output(solution_output, static_cast<uint32_t>(itemCount)) != 0)
         {
             fclose(solution_output);
-            freeMemory(matrix, solutions, titles, itemCount);
+            dlx::Core::freeMemory(matrix, solutions, titles, itemCount);
             exit(1);
         }
 
-        search(matrix, 0, solutions, NULL);
-        dlx_disable_binary_solution_output();
+        dlx::Core::search(matrix, 0, solutions, NULL);
+        dlx::Core::dlx_disable_binary_solution_output();
     }
     else
     {
-        search(matrix, 0, solutions, solution_output);
+        dlx::Core::search(matrix, 0, solutions, solution_output);
     }
 
     if (suppress_stdout)
     {
-        dlx_set_stdout_suppressed(false);
+        dlx::Core::dlx_set_stdout_suppressed(false);
     }
 
     if (!write_to_stdout)
@@ -238,7 +238,7 @@ int main(int argc, char** argv)
     }
     
     // Release all malloc'd memory
-    freeMemory(matrix, solutions, titles, itemCount);
+        dlx::Core::freeMemory(matrix, solutions, titles, itemCount);
     
     return EXIT_SUCCESS;
 }
