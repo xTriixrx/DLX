@@ -1,7 +1,6 @@
 #include "sudoku/decoder/sudoku_decoder.h"
 #include "core/dlx_binary.h"
 #include "sudoku/encoder/sudoku_encoder.h"
-#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -177,54 +176,6 @@ static int apply_solution_indices(const uint32_t* indices,
     return 0;
 }
 
-static int apply_solution_line(const char* line,
-                               const struct candidate_vector* candidates,
-                               const int base_grid[GRID_SIZE][GRID_SIZE],
-                               const bool base_row_used[GRID_SIZE][DIGIT_COUNT + 1],
-                               const bool base_col_used[GRID_SIZE][DIGIT_COUNT + 1],
-                               const bool base_box_used[GRID_SIZE][DIGIT_COUNT + 1],
-                               int solved_grid[GRID_SIZE][GRID_SIZE])
-{
-    char* buffer = strdup(line);
-    if (buffer == NULL)
-    {
-        fprintf(stderr, "Failed to duplicate solution line\n");
-        return 1;
-    }
-
-    std::vector<uint32_t> indices;
-    char* token = strtok(buffer, " \t\r\n");
-    while (token != NULL)
-    {
-        if (*token != '\0')
-        {
-            char* endptr = NULL;
-            long value = strtol(token, &endptr, 10);
-            if (endptr == token || value <= 0 || value > candidates->size)
-            {
-                fprintf(stderr, "Invalid row identifier '%s' in solution\n", token);
-                free(buffer);
-                return 1;
-            }
-
-            indices.push_back(static_cast<uint32_t>(value));
-        }
-
-        token = strtok(NULL, " \t\r\n");
-    }
-
-    int result = apply_solution_indices(indices.data(),
-                                        indices.size(),
-                                        candidates,
-                                        base_grid,
-                                        base_row_used,
-                                        base_col_used,
-                                        base_box_used,
-                                        solved_grid);
-    free(buffer);
-    return result;
-}
-
 static int write_solution(FILE* output, const int grid[GRID_SIZE][GRID_SIZE], int solution_index)
 {
     fprintf(output, "Solution #%d\n", solution_index);
@@ -242,8 +193,7 @@ static int write_solution(FILE* output, const int grid[GRID_SIZE][GRID_SIZE], in
 
 int decode_sudoku_solution(const char* puzzle_path,
                            const char* solution_rows_path,
-                           const char* output_path,
-                           bool binary_input)
+                           const char* output_path)
 {
     int grid[GRID_SIZE][GRID_SIZE] = {{0}};
     bool row_used[GRID_SIZE][DIGIT_COUNT + 1] = {{false}};
@@ -278,8 +228,7 @@ int decode_sudoku_solution(const char* puzzle_path,
 
     const char* resolved_solution_path = (solution_rows_path == NULL) ? "-" : solution_rows_path;
     bool read_from_stdin = (strcmp(resolved_solution_path, "-") == 0);
-    const char* solution_mode = binary_input ? "rb" : "r";
-    FILE* rows_file = read_from_stdin ? stdin : fopen(resolved_solution_path, solution_mode);
+    FILE* rows_file = read_from_stdin ? stdin : fopen(resolved_solution_path, "rb");
     if (rows_file == NULL)
     {
         fprintf(stderr, "Unable to open solution rows file %s\n", resolved_solution_path);
@@ -291,86 +240,43 @@ int decode_sudoku_solution(const char* puzzle_path,
         return 1;
     }
 
-    if (binary_input)
+    struct DlxSolutionHeader header;
+    if (dlx_read_solution_header(rows_file, &header) != 0)
     {
-        struct DlxSolutionHeader header;
-        if (dlx_read_solution_header(rows_file, &header) != 0)
-        {
-            fprintf(stderr, "Failed to read solution header from %s\n", resolved_solution_path);
-            status = 1;
-        }
-        else if (header.magic != DLX_SOLUTION_MAGIC)
-        {
-            fprintf(stderr, "Invalid solution file magic\n");
-            status = 1;
-        }
-        else
-        {
-            struct DlxSolutionRow row = {0};
-            while (status == 0)
-            {
-                int read_status = dlx_read_solution_row(rows_file, &row);
-                if (read_status == 0)
-                {
-                    break;
-                }
-                if (read_status == -1)
-                {
-                    fprintf(stderr, "Corrupt solution row in %s\n", resolved_solution_path);
-                    status = 1;
-                    break;
-                }
-
-                if (apply_solution_indices(row.row_indices,
-                                           row.entry_count,
-                                           &vector,
-                                           grid,
-                                           row_used,
-                                           col_used,
-                                           box_used,
-                                           solved_grid)
-                    != 0)
-                {
-                    status = 1;
-                    break;
-                }
-
-                write_solution(output, solved_grid, solution_index++);
-            }
-
-            dlx_free_solution_row(&row);
-        }
+        fprintf(stderr, "Failed to read solution header from %s\n", resolved_solution_path);
+        status = 1;
+    }
+    else if (header.magic != DLX_SOLUTION_MAGIC)
+    {
+        fprintf(stderr, "Invalid solution file magic\n");
+        status = 1;
     }
     else
     {
-        char* line = NULL;
-        size_t len = 0;
-        ssize_t read;
-
-        while ((read = getline(&line, &len, rows_file)) != -1)
+        struct DlxSolutionRow row = {0};
+        while (status == 0)
         {
-            bool has_digit = false;
-            for (ssize_t i = 0; i < read; i++)
+            int read_status = dlx_read_solution_row(rows_file, &row);
+            if (read_status == 0)
             {
-                if (!isspace((unsigned char)line[i]))
-                {
-                    has_digit = true;
-                    break;
-                }
+                break;
+            }
+            if (read_status == -1)
+            {
+                fprintf(stderr, "Corrupt solution row in %s\n", resolved_solution_path);
+                status = 1;
+                break;
             }
 
-            if (!has_digit)
-            {
-                continue;
-            }
-
-            if (apply_solution_line(line,
-                                    &vector,
-                                    grid,
-                                    row_used,
-                                    col_used,
-                                    box_used,
-                                    solved_grid) != 0)
+            if (apply_solution_indices(row.row_indices,
+                                       row.entry_count,
+                                       &vector,
+                                       grid,
+                                       row_used,
+                                       col_used,
+                                       box_used,
+                                       solved_grid)
+                != 0)
             {
                 status = 1;
                 break;
@@ -379,7 +285,7 @@ int decode_sudoku_solution(const char* puzzle_path,
             write_solution(output, solved_grid, solution_index++);
         }
 
-        free(line);
+        dlx_free_solution_row(&row);
     }
 
     if (!read_from_stdin)

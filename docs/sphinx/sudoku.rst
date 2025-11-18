@@ -124,7 +124,7 @@ Encoder
 .. code-block:: c
    :class: astro-mui-prototypes
 
-   int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path, bool binary_format);
+   int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path);
 
 .. doxygenfunction:: convert_sudoku_to_cover
    :project: dlx
@@ -170,8 +170,7 @@ Decoder
 
    int decode_sudoku_solution(const char* puzzle_path,
                               const char* solution_rows_path,
-                              const char* output_path,
-                              bool binary_input);
+                              const char* output_path);
 
 .. doxygenfunction:: decode_sudoku_solution
    :project: dlx

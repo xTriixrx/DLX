@@ -105,35 +105,19 @@ This emits both `build/coverage/coverage.html` (detailed report) and `build/cove
 
 #### Sudoku Encoder
 
-The `sudoku_encoder` application takes a sudoku problem file and converts the problem to a complete cover matrix representation in an output file. The required parameters to run `sudoku_encoder` is the following:
+The `sudoku_encoder` application takes a sudoku problem file and converts the problem to a DLX binary cover stream. Usage:
 
 ```bash
-./sudoku_encoder [-t] <problem_file> <cover_output_path>
+./sudoku_encoder <problem_file> [cover_output_path]
 ```
 
-- Default mode writes a DLX binary cover stream.
-- `-t`/`--text` writes a human-readable cover file.
+If `cover_output_path` is omitted or set to `-`, the cover stream is written to stdout so it can be piped directly into `dlx`. All `sudoku_test*.txt` files under the `tests/` directory can be used as encoder input. Writing the binary stream to disk looks like:
 
-An example that emits the default binary stream:
 ```bash
 ./sudoku_encoder sudoku_test.txt sudoku_cover.bin
 ```
 
-All `sudoku_test*.txt` files under the `tests/` directory can be used as input into the sudoku encoder. To produce text for inspection, add `-t`:
-```bash
-./sudoku_encoder -t sudoku_test.txt sudoku_cover.txt
-```
-The `sudoku_cover.txt` file under the `tests/` directory shows an example of what one of these cover files look like.
-
-To stream the cover matrix directly to another process, omit the destination path or pass `-` to write to stdout. This allows shell pipelines such as:
-```bash
-./sudoku_encoder -t tests/sudoku_test.txt - > tests/tmp_cover.txt
-```
-The same `-` shorthand works for reading puzzles from stdin (e.g., `cat puzzle.txt | ./sudoku_encoder - -`).
-
-##### Sudoku Eecoder Binary Interface
-
-Binary is now the default interface—no extra flags are necessary. The `sudoku_cover.bin` file path will be the binary outputed by the sudoku encoder.
+Use the same `-` shorthand to read puzzles from stdin (e.g., `cat puzzle.txt | ./sudoku_encoder - -`).
 
 ##### Generating your own Sudoku Input File
 
@@ -153,79 +137,42 @@ If you would like to put in your own solvable sudoku problem into the pipeline, 
 
 #### DLX
 
-The dlx application takes a complete cover matrix as an input file and will find every possible solution permutation for the complete cover matrix into an output file. The required parameters to run dlx is the following:
+The `dlx` application takes a DLX binary cover matrix as input and emits every possible solution row in both text (stdout) and binary form:
 
 ```bash
-./dlx [-t] <cover_output> <solution_output_path>
+./dlx <cover_file> [solution_output_path]
 ```
 
-- Default mode expects a DLX binary cover file and writes binary solution rows.
-- `-t` instructs `dlx` to read a text cover matrix and emit text solution rows for easier inspection.
-
-An example of this command using one of the provided test files:
-```bash
-./dlx sudoku_cover.bin dlx_solution_output.bin
-```
-
-Use `-t` whenever you are working with `sudoku_cover.txt`/text artifacts:
-```bash
-./dlx -t sudoku_cover.txt dlx_solution_output.txt
-```
-
-##### DLX Binary Interface
-
-Binary mode is now the default. The `sudoku_cover.bin` file path should reference the encoder's output, and the resulting `dlx_solution_output.bin` file will contain binary solution rows for the decoder.
+Passing `-` for either argument switches to stdin/stdout. When the binary solution output is written to stdout, console printing is automatically suppressed; otherwise, human-readable rows are streamed via the sink infrastructure while the DLXS file is written to the requested path.
 
 #### Sudoku Decoder
 
-The sudoku_decoder application takes the original sudoku problem file and the sudoku solution file as input and decodes the complete cover solution back into the original sudoku domain into an output file. The required parameters to run sudoku_decoder is the following:
+The `sudoku_decoder` application takes the original sudoku problem file plus the binary solution rows and reconstructs solved grids:
 
 ```bash
-./sudoku_decoder [-t] <problem_file> [solution_file] [answer_file]
+./sudoku_decoder <problem_file> [solution_file] [answer_file]
 ```
 
-- Default mode expects the DLX solution rows in binary form (matching the default `dlx` output); pass `-` (or omit trailing arguments) to read rows from stdin and/or write solved grids to stdout.
-- `-t` tells the decoder to read the text DLX solution stream emitted by `dlx -t`.
+Omit `solution_file` or `answer_file` (or pass `-`) to stream stdin/stdout respectively. A typical invocation looks like:
 
-An example of this command using the binary pipeline:
 ```bash
 ./sudoku_decoder sudoku_test.txt dlx_solution_output.bin sudoku_solution.txt
 ```
 
-The `sudoku_test.txt` file under the `tests/` directory is an example of a problem file.
+The `sudoku_test.txt` file under `tests/` is an example puzzle, and `sudoku_solution.txt` contains the expected solved grid.
 
-The `dlx_solution_output.txt` file under the `tests/` directory shows an example of what a complete cover solution file looks like.
+#### End-to-End Pipeline Example
 
-The `sudoku_solution.txt` file under the `tests/` directory is an example of a sudoku final answer.
-
-##### Sudoku Decoder Binary Interface
-
-If the dlx application was used in text mode, mirror that choice via the decoder's `-t` flag:
-```bash
-./sudoku_decoder -t sudoku_test.txt dlx_solution_output.txt sudoku_solution.txt
-```
-
-#### End-to-End Pipeline Examples
-
-With the new streaming support, the entire Sudoku workflow can be chained without temporary files. The binary-first path (default for every stage) looks like:
+With the streaming sink in place, the full Sudoku workflow can be chained without temporary files:
 
 ```bash
-./build/sudoku_encoder tests/sudoku_test.txt - \
-  | ./build/dlx - \
-  | ./build/sudoku_decoder tests/sudoku_test.txt - \
+./build/sudoku_encoder tests/sudoku_test.txt \
+  | ./build/dlx \
+  | ./build/sudoku_decoder tests/sudoku_test.txt \
   > answers
 ```
 
-This command uses binary I/O everywhere (no flags required) and writes the final solved grids into `answers`. To run a fully text-based pipeline for debugging, add `-t` to each command:
-
-```bash
-./build/sudoku_encoder -t tests/sudoku_test.txt - \
-  | ./build/dlx -t - \
-  | ./build/sudoku_decoder -t tests/sudoku_test.txt - \
-  > answers
-```
-
-Both snippets demonstrate the `-` convention: encoder writes the cover matrix to stdout, `dlx` consumes stdin and streams row identifiers, and the decoder reconstructs solutions directly into the final answers file.
+This command uses binary I/O for every hop and writes the solved grids into `answers`. When outputs are omitted, each stage automatically streams via stdin/stdout.
 
 ### DLX Binary Interchange (DLXB/DLXS)
 

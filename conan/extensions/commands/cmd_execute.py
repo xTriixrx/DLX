@@ -52,11 +52,6 @@ def _sudoku_parser() -> argparse.ArgumentParser:
         default="build",
         help="CMake build folder containing the sudoku binaries (default: build).",
     )
-    parser.add_argument(
-        "--text",
-        action="store_true",
-        help="Run the pipeline in text mode (adds -t to encoder/dlx/decoder).",
-    )
     return parser
 
 
@@ -68,7 +63,6 @@ def _run_sudoku_pipeline(opts: argparse.Namespace, output: ConanOutput) -> None:
         answers_path = _abs(default_answers)
     else:
         answers_path = _abs(_default_answers_filename(puzzle_path))
-    text_mode = bool(opts.text)
 
     _ensure_file(puzzle_path, "Puzzle file")
     os.makedirs(os.path.dirname(answers_path) or ".", exist_ok=True)
@@ -77,15 +71,15 @@ def _run_sudoku_pipeline(opts: argparse.Namespace, output: ConanOutput) -> None:
     dlx_bin = _resolve_binary(build_folder, "dlx")
     decoder_bin = _resolve_binary(build_folder, "sudoku_decoder")
 
-    encoder_cmd = [encoder_bin] + (["-t"] if text_mode else []) + [puzzle_path, "-"]
-    dlx_cmd = [dlx_bin] + (["-t"] if text_mode else []) + ["-", "-"]
-    decoder_cmd = [decoder_bin] + (["-t"] if text_mode else []) + [puzzle_path, "-", answers_path]
+    encoder_cmd = [encoder_bin, puzzle_path]
+    dlx_cmd = [dlx_bin]
+    decoder_cmd = [decoder_bin, puzzle_path]
 
     output.info(
-        f"[execute] sudoku pipeline: puzzle={puzzle_path} answers={answers_path} "
-        f"mode={'text' if text_mode else 'binary'}"
+        f"[execute] sudoku pipeline: puzzle={puzzle_path} answers={answers_path} (binary mode)"
     )
 
+    answers_file = open(answers_path, "w")
     try:
         encoder_proc = subprocess.Popen(
             encoder_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -100,6 +94,7 @@ def _run_sudoku_pipeline(opts: argparse.Namespace, output: ConanOutput) -> None:
         decoder_proc = subprocess.Popen(
             decoder_cmd,
             stdin=dlx_proc.stdout,
+            stdout=answers_file,
             stderr=subprocess.PIPE,
         )
         dlx_proc.stdout.close()
@@ -109,6 +104,8 @@ def _run_sudoku_pipeline(opts: argparse.Namespace, output: ConanOutput) -> None:
         encoder_stderr = encoder_proc.communicate()[1]
     except FileNotFoundError as exc:
         raise ConanException(f"Failed to launch subprocess: {exc}")
+    finally:
+        answers_file.close()
 
     _raise_on_failure("sudoku_encoder", encoder_proc, encoder_cmd, encoder_stderr)
     _raise_on_failure("dlx", dlx_proc, dlx_cmd, dlx_stderr)

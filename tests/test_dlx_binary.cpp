@@ -168,7 +168,7 @@ TEST(DlxBinaryTest, DlxSolvesFromBinaryCoverAndEmitsBinarySolutions)
     ASSERT_NE(cover_fd, -1);
     close(cover_fd);
 
-    ASSERT_EQ(convert_sudoku_to_cover("tests/sudoku_test.txt", cover_template, true), 0);
+    ASSERT_EQ(convert_sudoku_to_cover("tests/sudoku_test.txt", cover_template), 0);
 
     FILE* cover = fopen(cover_template, "rb");
     ASSERT_NE(cover, nullptr);
@@ -185,13 +185,17 @@ TEST(DlxBinaryTest, DlxSolvesFromBinaryCoverAndEmitsBinarySolutions)
     ASSERT_GT(itemCount, 0);
     ASSERT_GT(optionCount, 0);
 
+    uint32_t* row_ids = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * optionCount));
+    ASSERT_NE(row_ids, nullptr);
+
     FILE* binary_output = tmpfile();
     ASSERT_NE(binary_output, nullptr);
-    ASSERT_EQ(dlx::Core::dlx_enable_binary_solution_output(binary_output, static_cast<uint32_t>(itemCount)), 0);
+    dlx::SolutionOutput output_ctx;
+    ASSERT_EQ(dlx::Core::dlx_enable_binary_solution_output(output_ctx, binary_output, static_cast<uint32_t>(itemCount)), 0);
 
     testing::internal::CaptureStdout();
-    dlx::Core::search(matrix, 0, solutions, NULL);
-    dlx::Core::dlx_disable_binary_solution_output();
+    dlx::Core::search(matrix, 0, solutions, row_ids, output_ctx);
+    dlx::Core::dlx_disable_binary_solution_output(output_ctx);
     std::string stdout_capture = testing::internal::GetCapturedStdout();
     EXPECT_EQ(stdout_capture, expected_rows);
 
@@ -216,6 +220,7 @@ TEST(DlxBinaryTest, DlxSolvesFromBinaryCoverAndEmitsBinarySolutions)
 
     dlx_free_solution_row(&row);
     fclose(binary_output);
+    free(row_ids);
     dlx::Core::freeMemory(matrix, solutions, titles, itemCount);
     remove(cover_template);
 }

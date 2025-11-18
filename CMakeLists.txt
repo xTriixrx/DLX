@@ -21,7 +21,12 @@ find_package(GTest CONFIG REQUIRED)
 find_package(Doxygen)
 find_package(Python3 COMPONENTS Interpreter)
 
-add_library(dlx_binary STATIC src/core/dlx_binary.cpp src/core/dlx_server.cpp src/core/dlx_core.cpp)
+add_library(dlx_binary STATIC
+    src/core/dlx_binary.cpp
+    src/core/dlx_server.cpp
+    src/core/dlx_core.cpp
+    src/core/solution_sink.cpp
+)
 target_include_directories(dlx_binary PUBLIC include)
 
 add_library(sudoku_encoder_lib STATIC src/sudoku/encoder/sudoku_encoder.cpp)
@@ -58,6 +63,16 @@ if(BUILD_TESTING)
     target_link_libraries(test_dlx_binary PRIVATE dlx_binary sudoku_encoder_lib GTest::gtest_main)
     add_test(NAME dlx_binary_tests COMMAND test_dlx_binary)
     set_tests_properties(dlx_binary_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+    add_executable(test_solution_sink tests/test_solution_sink.cpp)
+    target_link_libraries(test_solution_sink PRIVATE dlx_binary GTest::gtest_main)
+    add_test(NAME solution_sink_tests COMMAND test_solution_sink)
+    set_tests_properties(solution_sink_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+    add_executable(test_matrix_dump tests/test_matrix_dump.cpp)
+    target_link_libraries(test_matrix_dump PRIVATE dlx_binary GTest::gtest_main)
+    add_test(NAME matrix_dump_tests COMMAND test_matrix_dump)
+    set_tests_properties(matrix_dump_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
     add_executable(test_sudoku_pipeline tests/test_sudoku_pipeline.cpp)
     add_dependencies(test_sudoku_pipeline dlx sudoku_encoder sudoku_decoder)

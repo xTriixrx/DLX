@@ -1,11 +1,14 @@
 #include "core/dlx.h"
 #include "core/dlx_binary.h"
+#include "core/solution_sink.h"
 #include <stdio.h>
+#include <iostream>
 #include <wchar.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <locale.h>
 #include <string.h>
+#include <vector>
 #include <limits.h>
 #include <sys/stat.h>
 
@@ -17,31 +20,72 @@ constexpr char SPACE_DELIMITER[] = " ";
 
 } // namespace
 
-namespace dlx {
-
-const char* READ_ONLY = "r";
-
 namespace {
 
-struct binary_solution_output_ctx
+int matrix_index(const struct node* base, const struct node* ptr)
 {
-    FILE* file;
-    uint32_t next_solution_id;
-};
+    if (ptr == nullptr)
+    {
+        return -1;
+    }
+    return static_cast<int>(ptr - base);
+}
 
-binary_solution_output_ctx g_binary_output{nullptr, 1};
-bool g_suppress_stdout_output = false;
+void dumpMatrixStructure(const struct node* matrix,
+                         int total_nodes,
+                         int itemCount,
+                         std::ostream& output)
+{
+    output << "MATRIX item_count=" << itemCount << " total_nodes=" << total_nodes << "\n";
+    for (int i = 0; i <= total_nodes; ++i)
+    {
+        const struct node& node = matrix[i];
+        const char* type = "NODE";
+        if (i == 0)
+        {
+            type = "HEAD";
+        }
+        else if (i <= itemCount)
+        {
+            type = "COLUMN";
+        }
+        else if (node.top == matrix)
+        {
+            type = "SPACER";
+        }
+
+        output << type << " index=" << i
+               << " data=" << node.data
+               << " len=" << node.len
+               << " top=" << matrix_index(matrix, node.top)
+               << " left=" << matrix_index(matrix, node.left)
+               << " right=" << matrix_index(matrix, node.right)
+               << " up=" << matrix_index(matrix, node.up)
+               << " down=" << matrix_index(matrix, node.down);
+        output << "\n";
+    }
+}
 
 } // namespace
+
+namespace dlx {
+
+bool g_suppress_stdout_output = false;
+std::ostream* g_matrix_dump_stream = nullptr;
 
 void Core::dlx_set_stdout_suppressed(bool suppressed)
 {
     g_suppress_stdout_output = suppressed;
 }
 
-static void write_binary_solution_row(char** solutions, int level)
+void Core::setMatrixDumpStream(std::ostream* stream)
 {
-    if (g_binary_output.file == NULL || level <= 0)
+    g_matrix_dump_stream = stream;
+}
+
+void SolutionOutput::emit_binary_row(const uint32_t* row_ids, int level)
+{
+    if (binary_file == NULL || level <= 0)
     {
         return;
     }
@@ -52,42 +96,18 @@ static void write_binary_solution_row(char** solutions, int level)
         return;
     }
 
-    uint32_t* indices = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * level));
-    if (indices == NULL)
-    {
-        fprintf(stderr, "Unable to allocate binary solution buffer\n");
-        return;
-    }
-
-    for (int i = 0; i < level; i++)
-    {
-        char* endptr = NULL;
-        unsigned long value = strtoul(solutions[i], &endptr, 10);
-        if (endptr == solutions[i] || value == 0 || value > UINT32_MAX)
-        {
-            fprintf(stderr, "Invalid solution row identifier '%s'\n", solutions[i]);
-            free(indices);
-            return;
-        }
-
-        indices[i] = static_cast<uint32_t>(value);
-    }
-
-    if (dlx_write_solution_row(g_binary_output.file,
-                               g_binary_output.next_solution_id,
-                               indices,
+    if (dlx_write_solution_row(binary_file,
+                               next_solution_id,
+                               row_ids,
                                static_cast<uint16_t>(level)) != 0)
     {
         fprintf(stderr, "Failed to write binary solution row\n");
-        free(indices);
         return;
     }
-
-    g_binary_output.next_solution_id += 1;
-    free(indices);
+    next_solution_id += 1;
 }
 
-int Core::dlx_enable_binary_solution_output(FILE* output, uint32_t column_count)
+int Core::dlx_enable_binary_solution_output(SolutionOutput& output_ctx, FILE* output, uint32_t column_count)
 {
     if (output == NULL)
     {
@@ -107,15 +127,17 @@ int Core::dlx_enable_binary_solution_output(FILE* output, uint32_t column_count)
         return -1;
     }
 
-    g_binary_output.file = output;
-    g_binary_output.next_solution_id = 1;
+    output_ctx.binary_file = output;
+    output_ctx.column_count = column_count;
+    output_ctx.next_solution_id = 1;
     return 0;
 }
 
-void Core::dlx_disable_binary_solution_output(void)
+void Core::dlx_disable_binary_solution_output(SolutionOutput& output_ctx)
 {
-    g_binary_output.file = NULL;
-    g_binary_output.next_solution_id = 1;
+    output_ctx.binary_file = NULL;
+    output_ctx.next_solution_id = 1;
+    output_ctx.column_count = 0;
 }
 
 /**************************************************************************************************************
@@ -136,12 +158,12 @@ void Core::dlx_disable_binary_solution_output(void)
  * @param char** A char pointer to pointers containing partials of a solutions.
  * @return void
  */ 
-void Core::search(struct node* head, int level, char** solutions, FILE* solution_output)
+void Core::search(struct node* head, int level, char** solutions, uint32_t* row_ids, SolutionOutput& output)
 {
     // If all items have been covered, output a found solution.
     if (head->right == head)
     {
-        printSolutions(solutions, level, solution_output);
+        printSolutions(solutions, row_ids, level, output);
         return;
     }
     
@@ -159,10 +181,12 @@ void Core::search(struct node* head, int level, char** solutions, FILE* solution
         optionNumber += 1;
     }
 
+    uint32_t optionRowId = static_cast<uint32_t>(abs(optionNumber->data));
     // Create string for potential partial of solution
-    char* optionStr = (char *) malloc(snprintf(NULL, 0, "%d", abs(optionNumber->data)) + 1);
-    sprintf(optionStr, "%d", abs(optionNumber->data));
+    char* optionStr = static_cast<char*>(malloc(snprintf(NULL, 0, "%u", optionRowId) + 1));
+    sprintf(optionStr, "%u", optionRowId);
     solutions[level] = optionStr;
+    row_ids[level] = optionRowId;
 
     // While node of a particular option row doesn't loop back to item node.
     struct node* optionPart;
@@ -188,7 +212,7 @@ void Core::search(struct node* head, int level, char** solutions, FILE* solution
         }
         
         // Recursively search for potential solutions...
-        search(head, level + 1, solutions, solution_output);
+        search(head, level + 1, solutions, row_ids, output);
 
         // Iterate optionPart to options' spacer node
         optionPart = option + 1;
@@ -227,9 +251,11 @@ void Core::search(struct node* head, int level, char** solutions, FILE* solution
         
         // Free malloc'd memory for old potential partial of solution and create new string for potential partial of solution
         free(optionStr);
-        optionStr = (char *) malloc(snprintf(NULL, 0, "%d", abs(optionNumber->data)) + 1);
-        sprintf(optionStr, "%d", abs(optionNumber->data));
+        optionRowId = static_cast<uint32_t>(abs(optionNumber->data));
+        optionStr = static_cast<char*>(malloc(snprintf(NULL, 0, "%u", optionRowId) + 1));
+        sprintf(optionStr, "%u", optionRowId);
         solutions[level] = optionStr;
+        row_ids[level] = optionRowId;
     }
 
     // Free malloc'd memory and uncover the item
@@ -435,6 +461,7 @@ struct node* Core::generateMatrix(FILE* cover, char** titles, int nodeCount)
     // Read first line of cover file and generate titles array
     read = getline(&buffer, &len, cover);
     currNodeCount = generateTitles(matrix, titles, buffer);
+    const int itemCount = currNodeCount;
 
     // Read line by line of entire cover file
     while ((read = getline(&buffer, &len, cover)) != -1)
@@ -515,6 +542,136 @@ struct node* Core::generateMatrix(FILE* cover, char** titles, int nodeCount)
 
     free(buffer);
 
+    if (g_matrix_dump_stream != nullptr)
+    {
+        dumpMatrixStructure(matrix, nodeCount, itemCount, *g_matrix_dump_stream);
+    }
+
+    return matrix;
+}
+
+struct node* Core::generateMatrixFromChunks(std::istream& source,
+                                            uint32_t column_count,
+                                            uint32_t row_count,
+                                            char*** titles_out,
+                                            char*** solutions_out,
+                                            int* item_count_out,
+                                            int* option_count_out)
+{
+    if (titles_out == nullptr || solutions_out == nullptr || item_count_out == nullptr
+        || option_count_out == nullptr)
+    {
+        return nullptr;
+    }
+
+    if (column_count == 0)
+    {
+        return nullptr;
+    }
+
+    // Titles are not embedded in the binary stream, so synthesize "COL<n>" placeholders.
+    char** titles = static_cast<char**>(malloc(sizeof(char*) * column_count));
+    if (titles == nullptr)
+    {
+        return nullptr;
+    }
+
+    for (uint32_t i = 0; i < column_count; i++)
+    {
+        titles[i] = static_cast<char*>(malloc(16));
+        if (titles[i] == nullptr)
+        {
+            for (uint32_t j = 0; j < i; j++)
+            {
+                free(titles[j]);
+            }
+            free(titles);
+            return nullptr;
+        }
+        snprintf(titles[i], 16, "COL%u", i);
+    }
+
+    // Prepare solution strings placeholder (one per row).
+    char** solutions = static_cast<char**>(calloc(row_count, sizeof(char*)));
+    if (solutions == nullptr)
+    {
+        for (uint32_t i = 0; i < column_count; i++)
+        {
+            free(titles[i]);
+        }
+        free(titles);
+        return nullptr;
+    }
+
+    *titles_out = titles;
+    *solutions_out = solutions;
+    *item_count_out = static_cast<int>(column_count);
+    *option_count_out = static_cast<int>(row_count);
+
+    // For now, fall back to text implementation by formatting the chunks into a temporary buffer.
+    // This preserves existing behavior while the binary-native generator is implemented.
+    FILE* temp = tmpfile();
+    if (temp == NULL)
+    {
+        dlx::Core::freeMemory(nullptr, solutions, titles, column_count);
+        return nullptr;
+    }
+
+    // Write synthesized header line.
+    for (uint32_t col = 0; col < column_count; col++)
+    {
+        fprintf(temp, "COL%u%s", col, (col + 1 == column_count) ? "\n" : " ");
+    }
+
+    while (source.good())
+    {
+        uint32_t row_id;
+        uint16_t entry_count;
+        source.read(reinterpret_cast<char*>(&row_id), sizeof(row_id));
+        if (!source.good())
+        {
+            break;
+        }
+
+        source.read(reinterpret_cast<char*>(&entry_count), sizeof(entry_count));
+        if (!source.good())
+        {
+            fclose(temp);
+            return nullptr;
+        }
+
+        std::vector<char> row(column_count, '0');
+        for (uint16_t i = 0; i < entry_count; i++)
+        {
+            uint32_t column;
+            source.read(reinterpret_cast<char*>(&column), sizeof(column));
+            if (!source.good())
+            {
+                fclose(temp);
+                return nullptr;
+            }
+
+            if (column < column_count)
+            {
+                row[column] = '1';
+            }
+        }
+
+        for (uint32_t col = 0; col < column_count; col++)
+        {
+            fputc(row[col], temp);
+            fputc((col + 1 == column_count) ? '\n' : ' ', temp);
+        }
+    }
+
+    fflush(temp);
+    rewind(temp);
+
+    int nodeCount = static_cast<int>(column_count) + dlx::Core::getNodeCount(temp);
+    rewind(temp);
+
+    struct node* matrix = dlx::Core::generateMatrix(temp, titles, nodeCount);
+    fclose(temp);
     return matrix;
 }
 
@@ -545,14 +702,9 @@ int Core::generateTitles(struct node* matrix, char** titles, char* titleLine)
             strncpy(newlinePtr, "\0", 1);
         }
 
-        // Malloc title entry and insert title data into title array
-        titles[currNodeCount] = static_cast<char*>(malloc(strlen(itemTitle) + 1));
-        strcpy(titles[currNodeCount], itemTitle);
-
         // Populate item node
         matrix[currNodeCount + 1].len = 0;
         matrix[currNodeCount + 1].top = matrix;
-        matrix[currNodeCount + 1].name = titles[currNodeCount];
         matrix[currNodeCount + 1].left = &matrix[currNodeCount];
         matrix[currNodeCount + 1].right = matrix;
         matrix[currNodeCount + 1].up = &matrix[currNodeCount + 1];
@@ -611,7 +763,6 @@ struct node* Core::generateHeadNode(int nodeCount)
 
     matrix[0].data = 0;
     matrix[0].top = matrix;
-    matrix[0].name = const_cast<char*>("HEAD");
     matrix[0].left = matrix;
     matrix[0].right = matrix;
 
@@ -619,198 +770,32 @@ struct node* Core::generateHeadNode(int nodeCount)
 }
 
 /**
- * A utility printing function that shows the read cover description structure in memory.
- * 
- * @param const struct node* A node pointer to the head of the matrix.
- * @param int The length of the matrix array.
- * @param int The number of item nodes (columns) defined in the matrix.
- * @return void
- */ 
-void Core::printMatrix(const struct node* matrix, int arr_len, int item_len)
-{
-    for (int i = 1; i < arr_len; i++)
-    {
-        // Generate item columns output by defined name 
-        if (i <= item_len)
-        {
-            if (i == item_len)
-            {
-                printf("%s\n", matrix[i].name);
-            }
-            else
-            {
-                printf("%s\t", matrix[i].name);
-            }
-        }
-        else
-        {
-            // If top is pointing to a valid column
-            if (matrix[i].top->data > 0)
-            {
-                // Just print data value if associated with first column
-                if ((matrix[i].top->data - 1) == 0)
-                {
-                    printf("%d", matrix[i].data);
-                }
-                else
-                {
-                    char* spaces;
-
-                    // If last node was not a spacer, use last top data to calculate spaces for this nodes' output
-                    if (matrix[i - 1].top->data > 0)
-                    {
-                        spaces = repeatStr("\t", matrix[i].top->data - matrix[i - 1].top->data);
-                    }
-                    else // Otherwise, just take the top - 1.
-                    {
-                        spaces = repeatStr("\t", matrix[i].top->data - 1);
-                    }
-
-                    printf("%s%d",spaces, matrix[i].data);
-                    free(spaces);
-                }
-
-                // If next node is a spacer, move to next line, generate a spacer and return again.
-                if (matrix[i + 1].top->data <= 0)
-                {   
-                    char* sep = repeatStr("-", item_len * 4);
-
-                    if (item_len - matrix[i].top->data != 0)
-                    {
-                        char* spaces = repeatStr("\t", (item_len - matrix[i].top->data) + 1);
-                        printf("%s%d\n%s\n", spaces, matrix[i + 1].data, sep);
-                        free(spaces);
-                    }
-                    else
-                    {
-                        printf("\t%d\n%s\n", matrix[i + 1].data, sep);
-                    }
-                    
-                    free(sep);
-                }
-            }
-        }
-    }
-}
-
-/**
  * A printing function used by the main search method that prints out the found solutions to stdout. Found solutions
  * could be piped to a file or to some other application for post-processing.
  */
-void Core::printSolutions(char** solutions, int level, FILE* solution_output)
+void Core::printSolutions(char** solutions, const uint32_t* row_ids, int level, SolutionOutput& output)
 {
-    bool write_console =
-        !g_suppress_stdout_output && (solution_output == NULL || solution_output != stdout);
-    bool write_stream = (solution_output != NULL);
-
-    for (int i = 0; i < level; i++)
-    {
-        const bool last_value = ((i + 1) == level);
-        const char* fmt = last_value ? "%s\n" : "%s ";
-
-        if (write_console)
+    auto emit = [&](std::ostream& stream) {
+        for (int i = 0; i < level; i++)
         {
-            printf(fmt, solutions[i]);
+            const bool last_value = ((i + 1) == level);
+            stream << solutions[i] << (last_value ? '\n' : ' ');
         }
-        if (write_stream)
-        {
-            fprintf(solution_output, fmt, solutions[i]);
-        }
+        stream.flush();
+    };
+
+    if (output.sink != nullptr)
+    {
+        SolutionView view{solutions, level};
+        output.sink->on_solution(view);
+        output.sink->flush();
+    }
+    else if (!g_suppress_stdout_output)
+    {
+        emit(std::cout);
     }
 
-    if (solution_output != NULL)
-    {
-        fflush(solution_output);
-    }
-
-    write_binary_solution_row(solutions, level);
-}
-
-/**
- * A printing function that prints out the first row of the matrix, which is the set of items defined to stdout. 
- * This function really is only useful for debugging purposes but could be used to see the state of the column's 
- * being covered in a debugging fashion.
- * 
- * @param struct node* A pointer to the beginning of the matrix.
- * @return void
- */
-void Core::printItems(struct node* head)
-{
-    struct node* curr = head;
-
-    // Printed in order to symbolize the circular connection
-    printf("| ");
-
-    do
-    {
-        printf("%s - %d ", curr->name, curr->data);
-        curr = curr->right;
-
-        if (curr != head)
-            printf("| ");
-        else
-            printf("|\n"); // printed on end to symbolize the circular connection
-    } while (curr != head);
-}
-
-/**
- * A printing function that prints out an items' column to stdout. This function really is only useful for debugging
- * purposes. This function assumes the debugger know's precisely the column node that should be investigated as this
- * function does not provide any checks for correctness of starting point.
- * 
- * @param struct node* A pointer to the item node in a given column.
- * @return void
- */
-void Core::printItemColumn(struct node* itemColumn)
-{
-    struct node* curr = itemColumn;
-
-    // Printed in order to symbolize the circular connection
-    printf("Column %s %p: | ", itemColumn->name, itemColumn);
-
-    do
-    {
-        printf("%d ", curr->data);
-        curr = curr->down;
-
-        if (curr != itemColumn)
-            printf("| ");
-        else
-            printf("| len(%s) = %d\n", itemColumn->name, itemColumn->len); // printed on end to symbolize the circular connection
-    } while (curr != itemColumn);
-}
-
-/**
- * A printing function that prints out an option row to stdout. This function really is only useful for debugging
- * purposes. This function assumes the debugger know's precisely the row node that should be investigated as this
- * function does not provide any checks for correctness of starting point.
- * 
- * @param struct node* A pointer to the first node in a given option row.
- * @return void
- */ 
-void Core::printOptionRow(struct node* optionRow)
-{
-    struct node* curr = optionRow;
-
-    while (curr->data > 0)
-    {
-        curr += 1;
-    }
-
-    printf("Row %d %p: | ", abs(curr->data), optionRow);
-
-    curr = optionRow;
-
-    do
-    {
-        printf("%d ", curr->data);
-        curr += 1;
-
-        if (curr->data > 0)
-            printf("| ");
-        else
-            printf("|\n");
-    } while (curr->data > 0);
+    output.emit_binary_row(row_ids, level);
 }
 
 /**
@@ -962,37 +947,6 @@ int Core::getOptionNodesCount(FILE* coverFile)
 }
 
 /**
- * An auxilary function for repeating a string N number of times.
- * 
- * @param char* A character pointer of a sequence to be repeated.
- * @param int The number of times the character pointer should be repeated.
- * @return char* A malloc'd repeated character array of the provided parameter.
- */ 
-char* Core::repeatStr(const char* str, int count)
-{
-    if (count == 0)
-    {
-        return NULL;
-    }
-
-    char *ret = static_cast<char*>(malloc(strlen(str) * count + count));
-    
-    if (ret == NULL)
-    {
-        return NULL;
-    }
-
-    strcpy(ret, str);
-    while (--count > 0)
-    {
-        strcat(ret, " ");
-        strcat(ret, str);
-    }
-
-    return ret;
-}
-
-/**
  * An auxilary function for freeing heap memory used by dlx program.
  * 
  * @param struct node* The matrix array associated with the read cover file.
@@ -1011,18 +965,6 @@ void Core::freeMemory(struct node* matrix, char** solutions, char** titles, int 
     free(titles);
     free(matrix);
     free(solutions);
-}
-
-/**
- * An auxilary function for checking if file exists or not;
- * 
- * @param char* A char pointer for a path to a file.
- * @return void
- */ 
-int Core::fileExists(char* file)
-{
-    struct stat buffer;
-    return (stat(file, &buffer) == 0);
 }
 
 } // namespace dlx

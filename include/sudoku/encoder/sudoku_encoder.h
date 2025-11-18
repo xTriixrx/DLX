@@ -37,14 +37,13 @@ struct SudokuCandidate
 typedef int (*sudoku_candidate_handler)(int row, int col, int digit, void* ctx);
 
 /**
- * @brief Convert a Sudoku puzzle into an exact-cover matrix.
+ * @brief Convert a Sudoku puzzle into a DLX binary cover file.
  *
  * @param puzzle_path Path to the textual puzzle definition (81 characters). Pass "-" to read stdin.
  * @param cover_path Destination cover file. Pass "-" to write to stdout.
- * @param binary_format Set to true to emit the DLX binary cover file.
  * @return 0 on success, non-zero on parse or IO failure.
  */
-int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path, bool binary_format);
+int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path);
 /**
  * @brief Load a Sudoku grid into memory and track used digits.
  */

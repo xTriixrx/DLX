@@ -18,5 +18,15 @@
     "C_Cpp.default.compilerPath": "/opt/homebrew/opt/llvm/bin/clang++",
     "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
     "C_Cpp.default.cppStandard": "c++17",
-    "C_Cpp.default.cStandard": "c11"
+    "C_Cpp.default.cStandard": "c11",
+    "files.associations": {
+        "__tree": "cpp",
+        "algorithm": "cpp",
+        "regex": "cpp",
+        "bitset": "cpp",
+        "cstdlib": "cpp",
+        "functional": "cpp",
+        "ranges": "cpp",
+        "text_encoding": "cpp"
+    }
 }

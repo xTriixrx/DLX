@@ -30,36 +30,14 @@ void run_pipeline_and_expect_success(const std::string& pipeline_command)
 
 } // namespace
 
-TEST(SudokuPipelineTest, TextPipelineProducesAnswersFile)
-{
-    const std::string answers_path = "build/pipeline_answers.txt";
-    std::remove(answers_path.c_str());
-
-    const std::string pipeline =
-        "build/sudoku_encoder -t tests/sudoku_test.txt - | "
-        "build/dlx -t - | "
-        "build/sudoku_decoder -t tests/sudoku_test.txt > " +
-        answers_path;
-    run_pipeline_and_expect_success(pipeline);
-
-    const std::string actual = read_file_to_string(answers_path);
-    ASSERT_FALSE(actual.empty());
-
-    const std::string expected =
-        read_file_to_string("tests/sudoku_solution.txt");
-    EXPECT_EQ(actual, expected);
-
-    std::remove(answers_path.c_str());
-}
-
 TEST(SudokuPipelineTest, BinaryPipelineProducesAnswersFile)
 {
     const std::string answers_path = "build/pipeline_answers_binary.txt";
     std::remove(answers_path.c_str());
 
     const std::string pipeline =
-        "build/sudoku_encoder tests/sudoku_test.txt - | "
-        "build/dlx - | "
+        "build/sudoku_encoder tests/sudoku_test.txt | "
+        "build/dlx | "
         "build/sudoku_decoder tests/sudoku_test.txt > " +
         answers_path;
     run_pipeline_and_expect_success(pipeline);

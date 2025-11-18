@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <string.h>
 #include <unistd.h>
+#include <vector>
 
 #define COLUMN_COUNT 324
 
@@ -17,91 +18,50 @@ void write_string_to_file(const char* path, const char* contents)
     fclose(file);
 }
 
-void count_header_and_rows(const char* path, int* header_cols, int* row_count)
+int count_rows_in_binary_cover(const char* path, std::vector<uint32_t>* first_row = nullptr)
 {
-    FILE* file = fopen(path, "r");
-    ASSERT_NE(file, nullptr);
-
-    char* line = NULL;
-    size_t len = 0;
-    ssize_t read = getline(&line, &len, file);
-    ASSERT_NE(read, -1);
-
-    int columns = 0;
-    char* token = strtok(line, " \r\n");
-    while (token != NULL)
+    FILE* file = fopen(path, "rb");
+    if (file == nullptr)
     {
-        columns++;
-        token = strtok(NULL, " \r\n");
+        ADD_FAILURE() << "Unable to open cover file " << path;
+        return 0;
     }
-    *header_cols = columns;
 
-    int rows = 0;
-    while ((read = getline(&line, &len, file)) != -1)
+    struct DlxCoverHeader header;
+    if (dlx_read_cover_header(file, &header) != 0)
     {
-        int values = 0;
-        int ones = 0;
-        token = strtok(line, " \r\n");
-        while (token != NULL)
+        ADD_FAILURE() << "Failed to read cover header from " << path;
+        fclose(file);
+        return 0;
+    }
+    EXPECT_EQ(header.column_count, COLUMN_COUNT);
+
+    struct DlxRowChunk chunk = {0};
+    int rows = 0;
+    while (true)
+    {
+        int status = dlx_read_row_chunk(file, &chunk);
+        if (status == -1)
         {
-            ASSERT_TRUE(strcmp(token, "0") == 0 || strcmp(token, "1") == 0);
-            if (strcmp(token, "1") == 0)
-            {
-                ones++;
-            }
-            values++;
-            token = strtok(NULL, " \r\n");
+            ADD_FAILURE() << "Corrupt row chunk in " << path;
+            break;
         }
-        ASSERT_EQ(values, COLUMN_COUNT);
-        ASSERT_EQ(ones, 4);
+        if (status == 0)
+        {
+            break;
+        }
+
+        if (rows == 0 && first_row != nullptr)
+        {
+            first_row->assign(chunk.columns, chunk.columns + chunk.entry_count);
+        }
+
         rows++;
     }
 
-    *row_count = rows;
-    free(line);
+    dlx_free_row_chunk(&chunk);
     fclose(file);
-}
-
-void assert_first_row_columns(const char* path, const int expected_indices[4])
-{
-    FILE* file = fopen(path, "r");
-    ASSERT_NE(file, nullptr);
-
-    char* line = NULL;
-    size_t len = 0;
-
-    // Skip header
-    ssize_t read = getline(&line, &len, file);
-    ASSERT_NE(read, -1);
-
-    // Read first data row
-    read = getline(&line, &len, file);
-    ASSERT_NE(read, -1);
-
-    int indices[4] = {0};
-    int discovered = 0;
-    char* token = strtok(line, " \r\n");
-    int column_index = 0;
-    while (token != NULL)
-    {
-        if (strcmp(token, "1") == 0)
-        {
-            ASSERT_LT(discovered, 4);
-            indices[discovered++] = column_index;
-        }
-
-        column_index++;
-        token = strtok(NULL, " \r\n");
-    }
-
-    ASSERT_EQ(discovered, 4);
-    for (int i = 0; i < 4; i++)
-    {
-        EXPECT_EQ(indices[i], expected_indices[i]);
-    }
-
-    free(line);
-    fclose(file);
+    return rows;
 }
 
 TEST(SudokuMatrixTest, EmptyGridGeneratesFullMatrix)
@@ -128,13 +88,10 @@ TEST(SudokuMatrixTest, EmptyGridGeneratesFullMatrix)
     ASSERT_NE(cover_fd, -1);
     close(cover_fd);
 
-    int result = convert_sudoku_to_cover(puzzle_template, cover_template, false);
+    int result = convert_sudoku_to_cover(puzzle_template, cover_template);
     ASSERT_EQ(result, 0);
 
-    int header_cols = 0;
-    int row_count = 0;
-    count_header_and_rows(cover_template, &header_cols, &row_count);
-    EXPECT_EQ(header_cols, COLUMN_COUNT);
+    int row_count = count_rows_in_binary_cover(cover_template);
     EXPECT_EQ(row_count, 729);
 
     remove(puzzle_template);
@@ -165,17 +122,19 @@ TEST(SudokuMatrixTest, PrefilledDigitsLimitCandidates)
     ASSERT_NE(cover_fd, -1);
     close(cover_fd);
 
-    int result = convert_sudoku_to_cover(puzzle_template, cover_template, false);
+    int result = convert_sudoku_to_cover(puzzle_template, cover_template);
     ASSERT_EQ(result, 0);
 
-    int header_cols = 0;
-    int row_count = 0;
-    count_header_and_rows(cover_template, &header_cols, &row_count);
-    EXPECT_EQ(header_cols, COLUMN_COUNT);
+    std::vector<uint32_t> first_row;
+    int row_count = count_rows_in_binary_cover(cover_template, &first_row);
     EXPECT_EQ(row_count, 701);
 
-    const int expected_indices[4] = {0, 81, 162, 243};
-    assert_first_row_columns(cover_template, expected_indices);
+    ASSERT_EQ(first_row.size(), 4u);
+    const uint32_t expected_indices[4] = {0, 81, 162, 243};
+    for (size_t i = 0; i < first_row.size(); i++)
+    {
+        EXPECT_EQ(first_row[i], expected_indices[i]);
+    }
 
     remove(puzzle_template);
     remove(cover_template);
@@ -205,7 +164,7 @@ TEST(SudokuMatrixTest, BinaryCoverOutputMatchesExpectations)
     ASSERT_NE(cover_fd, -1);
     close(cover_fd);
 
-    int result = convert_sudoku_to_cover(puzzle_template, cover_template, true);
+    int result = convert_sudoku_to_cover(puzzle_template, cover_template);
     ASSERT_EQ(result, 0);
 
     FILE* cover = fopen(cover_template, "rb");

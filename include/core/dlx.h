@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <ostream>
+#include <istream>
+#include <vector>
+#include "core/solution_sink.h"
 
 /**************************************************************************************************************
  *                                            DLX Application                                                 *
@@ -24,7 +28,6 @@ struct node
 {
     int len;              /**< Number of nodes currently linked beneath this column header. */
     int data;             /**< Column or row identifier associated with this node. */
-    char* name;           /**< Optional human readable label. */
     struct node* top;     /**< Column header for this node. */
     struct node* up;      /**< Pointer to the previous node in the column. */
     struct node* down;    /**< Pointer to the next node in the column. */
@@ -34,20 +37,36 @@ struct node
 
 namespace dlx {
 
-extern const char* READ_ONLY;
+struct SolutionOutput
+{
+    SolutionSink* sink;
+    FILE* binary_file;
+    uint32_t next_solution_id;
+    uint32_t column_count;
+
+    SolutionOutput() : sink(nullptr), binary_file(nullptr), next_solution_id(1), column_count(0) {}
+    void emit_binary_row(const uint32_t* row_ids, int level);
+};
 
 class Core
 {
 public:
-    static int fileExists(char*);
     static int getNodeCount(FILE*);
     static int getItemCount(FILE*);
     static int getOptionsCount(FILE*);
     static struct node* generateMatrix(FILE*, char**, int);
-    static void search(struct node*, int, char**, FILE*);
+    static struct node* generateMatrixFromChunks(std::istream& source,
+                                                 uint32_t column_count,
+                                                 uint32_t row_count,
+                                                 char*** titles_out,
+                                                 char*** solutions_out,
+                                                 int* item_count_out,
+                                                 int* option_count_out);
+    static void setMatrixDumpStream(std::ostream* stream);
+    static void search(struct node*, int, char**, uint32_t*, SolutionOutput&);
     static void freeMemory(struct node*, char**, char**, int);
-    static int dlx_enable_binary_solution_output(FILE* output, uint32_t column_count);
-    static void dlx_disable_binary_solution_output(void);
+    static int dlx_enable_binary_solution_output(SolutionOutput& output_ctx, FILE* output, uint32_t column_count);
+    static void dlx_disable_binary_solution_output(SolutionOutput& output_ctx);
     static void dlx_set_stdout_suppressed(bool suppressed);
 
 private:
@@ -55,19 +74,12 @@ private:
     static void cover(struct node*);
     static void unhide(struct node*);
     static void uncover(struct node*);
-    static char* repeatStr(const char*, int);
-    static void printItems(struct node*);
     static int getOptionNodesCount(FILE*);
-    static void printSolutions(char**, int, FILE*);
-    static void printOptionRow(struct node*);
+    static void printSolutions(char**, const uint32_t*, int, SolutionOutput&);
     static struct node* generateHeadNode(int);
-    static void printItemColumn(struct node*);
     static struct node* pickItem(struct node*);
-    static void insertIntoSet(struct node*, int);
-    static void printMatrix(const struct node*, int, int);
     static int generateTitles(struct node*, char**, char*);
     static void handleSpacerNodes(struct node*, int*, int, int);
-    static struct node insertItem(struct node*, struct node*, char*);
 };
 
 } // namespace dlx

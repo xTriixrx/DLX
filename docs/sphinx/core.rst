@@ -180,6 +180,24 @@ Binary Interface Helpers
 
    int dlx_read_solution_header(FILE* input, DlxSolutionHeader* header);
 
+Streaming Interfaces
+--------------------
+.. doxygenstruct:: dlx::SolutionView
+   :project: dlx
+   :members:
+
+.. doxygenclass:: dlx::SolutionSink
+   :project: dlx
+   :members:
+
+.. doxygenclass:: dlx::OstreamSolutionSink
+   :project: dlx
+   :members:
+
+.. doxygenclass:: dlx::CompositeSolutionSink
+   :project: dlx
+   :members:
+
 .. doxygenfunction:: dlx_read_solution_header
    :project: dlx
 
@@ -223,15 +241,6 @@ Binary Interface Helpers
 
 Solver Interfaces
 -----------------
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   int fileExists(char*);
-
-.. doxygenfunction:: fileExists
-   :project: dlx
-
-
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
@@ -298,45 +307,9 @@ Solver Interfaces
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   char* repeatStr(const char*, int);
-
-.. doxygenfunction:: repeatStr
-   :project: dlx
-
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   void printItems(struct node*);
-
-.. doxygenfunction:: printItems
-   :project: dlx
-
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
    int getOptionNodesCount(FILE*);
 
 .. doxygenfunction:: getOptionNodesCount
-   :project: dlx
-
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   void printSolutions(char**, int, FILE*);
-
-.. doxygenfunction:: printSolutions
-   :project: dlx
-
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   void printOptionRow(struct node*);
-
-.. doxygenfunction:: printOptionRow
    :project: dlx
 
 
@@ -352,15 +325,6 @@ Solver Interfaces
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   void printItemColumn(struct node*);
-
-.. doxygenfunction:: printItemColumn
-   :project: dlx
-
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
    struct node* pickItem(struct node*);
 
 .. doxygenfunction:: pickItem
@@ -370,27 +334,18 @@ Solver Interfaces
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   void insertIntoSet(struct node*, int);
+   void printSolutions(char**, const uint32_t*, int, dlx::SolutionSink*);
 
-.. doxygenfunction:: insertIntoSet
+.. doxygenfunction:: printSolutions
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   void search(struct node*, int, char**, FILE*);
+   void search(struct node*, int, char**, uint32_t*, dlx::SolutionSink*);
 
 .. doxygenfunction:: search
-   :project: dlx
-
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   void printMatrix(const struct node*, int, int);
-
-.. doxygenfunction:: printMatrix
    :project: dlx
 
 
@@ -400,6 +355,21 @@ Solver Interfaces
    struct node* generateMatrix(FILE*, char**, int);
 
 .. doxygenfunction:: generateMatrix
+   :project: dlx
+
+
+.. code-block:: cpp
+   :class: astro-mui-prototypes
+
+   struct node* generateMatrixFromChunks(std::istream& source,
+                                         uint32_t column_count,
+                                         uint32_t row_count,
+                                         char*** titles_out,
+                                         char*** solutions_out,
+                                         int* item_count_out,
+                                         int* option_count_out);
+
+.. doxygenfunction:: generateMatrixFromChunks
    :project: dlx
 
 
@@ -433,15 +403,6 @@ Solver Interfaces
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   struct node insertItem(struct node*, struct node*, char*);
-
-.. doxygenfunction:: insertItem
-   :project: dlx
-
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
    int dlx_enable_binary_solution_output(FILE* output, uint32_t column_count);
 
 .. doxygenfunction:: dlx_enable_binary_solution_output
@@ -455,3 +416,22 @@ Solver Interfaces
 
 .. doxygenfunction:: dlx_disable_binary_solution_output
    :project: dlx
+Streaming Interfaces
+--------------------
+.. doxygenstruct:: dlx::SolutionView
+   :project: dlx
+   :members:
+
+.. doxygenclass:: dlx::SolutionSink
+   :project: dlx
+   :members:
+
+.. doxygenclass:: dlx::OstreamSolutionSink
+   :project: dlx
+   :members:
+
+.. doxygenclass:: dlx::CompositeSolutionSink
+   :project: dlx
+   :members:
+
+*** End Patch

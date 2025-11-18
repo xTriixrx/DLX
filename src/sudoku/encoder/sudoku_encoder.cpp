@@ -11,29 +11,20 @@ static int parse_puzzle(FILE* input,
                         bool row_used[GRID_SIZE][DIGIT_COUNT + 1],
                         bool col_used[GRID_SIZE][DIGIT_COUNT + 1],
                         bool box_used[GRID_SIZE][DIGIT_COUNT + 1]);
-static int write_cover(FILE* output,
-                       const int grid[GRID_SIZE][GRID_SIZE],
-                       const bool row_used[GRID_SIZE][DIGIT_COUNT + 1],
-                       const bool col_used[GRID_SIZE][DIGIT_COUNT + 1],
-                       const bool box_used[GRID_SIZE][DIGIT_COUNT + 1]);
 static int write_binary_cover(FILE* output,
                               const int grid[GRID_SIZE][GRID_SIZE],
                               const bool row_used[GRID_SIZE][DIGIT_COUNT + 1],
                               const bool col_used[GRID_SIZE][DIGIT_COUNT + 1],
                               const bool box_used[GRID_SIZE][DIGIT_COUNT + 1]);
-static int write_header(FILE* output);
-static int emit_candidate(FILE* output, int row, int col, int digit);
-static int emit_row(FILE* output, const int column_indices[4]);
 static bool digit_allowed(int row,
                           int col,
                           int digit,
                           const bool row_used[GRID_SIZE][DIGIT_COUNT + 1],
                           const bool col_used[GRID_SIZE][DIGIT_COUNT + 1],
                           const bool box_used[GRID_SIZE][DIGIT_COUNT + 1]);
-static void build_column_name(int column_index, char* buffer, size_t buffer_len);
 static void build_column_indices(int row, int col, int digit, uint32_t indices[4]);
 
-int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path, bool binary_format)
+int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path)
 {
     if (puzzle_path == NULL || cover_path == NULL)
     {
@@ -42,8 +33,7 @@ int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path, boo
     }
 
     bool write_to_stdout = (strcmp(cover_path, "-") == 0);
-    const char* mode = binary_format ? "wb" : "w";
-    FILE* output = write_to_stdout ? stdout : fopen(cover_path, mode);
+    FILE* output = write_to_stdout ? stdout : fopen(cover_path, "wb");
     if (output == NULL)
     {
         fprintf(stderr, "Unable to create cover file %s\n", cover_path);
@@ -65,17 +55,7 @@ int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path, boo
         return 1;
     }
 
-    int status;
-    if (binary_format)
-    {
-        status = write_binary_cover(output, grid, row_used, col_used, box_used);
-    }
-    else
-    {
-        status = write_cover(output, grid, row_used, col_used, box_used);
-    }
-
-    if (status != 0)
+    if (write_binary_cover(output, grid, row_used, col_used, box_used) != 0)
     {
         if (!write_to_stdout)
         {
@@ -252,17 +232,6 @@ int iterate_sudoku_candidates(const int grid[GRID_SIZE][GRID_SIZE],
 }
 
 
-struct cover_writer_ctx
-{
-    FILE* output;
-};
-
-static int cover_writer_handler(int row, int col, int digit, void* ctx)
-{
-    struct cover_writer_ctx* writer = static_cast<struct cover_writer_ctx*>(ctx);
-    return emit_candidate(writer->output, row, col, digit);
-}
-
 static void build_column_indices(int row, int col, int digit, uint32_t indices[4])
 {
     indices[0] = row * GRID_SIZE + col;
@@ -312,109 +281,4 @@ static int write_binary_cover(FILE* output,
 
     struct binary_writer_ctx ctx = {.output = output, .next_row_id = 1};
     return iterate_sudoku_candidates(grid, row_used, col_used, box_used, binary_row_handler, &ctx);
-}
-
-static int write_cover(FILE* output,
-                       const int grid[GRID_SIZE][GRID_SIZE],
-                       const bool row_used[GRID_SIZE][DIGIT_COUNT + 1],
-                       const bool col_used[GRID_SIZE][DIGIT_COUNT + 1],
-                       const bool box_used[GRID_SIZE][DIGIT_COUNT + 1])
-{
-    if (write_header(output) != 0)
-    {
-        return 1;
-    }
-
-    struct cover_writer_ctx ctx = {.output = output};
-    return iterate_sudoku_candidates(grid, row_used, col_used, box_used, cover_writer_handler, &ctx);
-}
-
-static int write_header(FILE* output)
-{
-    char buffer[32];
-
-    for (int column = 0; column < COLUMN_COUNT; column++)
-    {
-        build_column_name(column, buffer, sizeof(buffer));
-        if (column == COLUMN_COUNT - 1)
-        {
-            fprintf(output, "%s\n", buffer);
-        }
-        else
-        {
-            fprintf(output, "%s ", buffer);
-        }
-    }
-
-    return 0;
-}
-
-static void build_column_name(int column_index, char* buffer, size_t buffer_len)
-{
-    if (column_index < CELL_CONSTRAINTS)
-    {
-        int row = column_index / GRID_SIZE;
-        int col = column_index % GRID_SIZE;
-        snprintf(buffer, buffer_len, "Cell_r%d_c%d", row, col);
-    }
-    else if (column_index < COL_DIGIT_OFFSET)
-    {
-        int offset = column_index - ROW_DIGIT_OFFSET;
-        int row = offset / DIGIT_COUNT;
-        int digit = offset % DIGIT_COUNT + 1;
-        snprintf(buffer, buffer_len, "Row_r%d_d%d", row, digit);
-    }
-    else if (column_index < BOX_DIGIT_OFFSET)
-    {
-        int offset = column_index - COL_DIGIT_OFFSET;
-        int col = offset / DIGIT_COUNT;
-        int digit = offset % DIGIT_COUNT + 1;
-        snprintf(buffer, buffer_len, "Col_c%d_d%d", col, digit);
-    }
-    else
-    {
-        int offset = column_index - BOX_DIGIT_OFFSET;
-        int box = offset / DIGIT_COUNT;
-        int digit = offset % DIGIT_COUNT + 1;
-        snprintf(buffer, buffer_len, "Box_b%d_d%d", box, digit);
-    }
-}
-
-static int emit_candidate(FILE* output, int row, int col, int digit)
-{
-    int indices[4];
-    uint32_t unsigned_indices[4];
-    build_column_indices(row, col, digit, unsigned_indices);
-    for (int i = 0; i < 4; i++)
-    {
-        indices[i] = (int)unsigned_indices[i];
-    }
-    return emit_row(output, indices);
-}
-
-static int emit_row(FILE* output, const int column_indices[4])
-{
-    for (int column = 0; column < COLUMN_COUNT; column++)
-    {
-        int value = 0;
-        for (int k = 0; k < 4; k++)
-        {
-            if (column_indices[k] == column)
-            {
-                value = 1;
-                break;
-            }
-        }
-
-        if (column == COLUMN_COUNT - 1)
-        {
-            fprintf(output, "%d\n", value);
-        }
-        else
-        {
-            fprintf(output, "%d ", value);
-        }
-    }
-
-    return 0;
 }
