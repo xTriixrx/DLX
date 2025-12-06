@@ -20,6 +20,9 @@ This specific implementation implements the sparse matrix approach and the lates
 - Python 3.9+ (for Conan plugins, documentation tooling, and gcovr/sphinx helpers)
 - C++17 & C11 compliant compiler (`g++`, `clang`, MSVC)
 - CMake 3.15+
+- Rust toolchain 1.75+ (install via `rustup`) with `cargo` for the scheduler workspace
+  - Install `wasm32-unknown-unknown` or additional targets as needed.
+  - For coverage: `rustup component add llvm-tools-preview` plus `cargo install cargo-llvm-cov`.
 - GCC-style coverage tooling if you plan to run `conan coverage`:
   - `gcov` ships with GCC (install `sudo apt install build-essential` on Ubuntu or `xcode-select --install` on macOS for clang+gcov).
   - `gcovr` for HTML/XML reports (`pip install gcovr` or `brew install gcovr`).
@@ -156,7 +159,30 @@ The `dlx` binary also exposes a streaming TCP interface so multiple producers an
 - **Problem port** accepts DLXB covers. Each TCP connection represents one problem: write the DLXB header and row chunks, then close the socket.
 - **Solution port** emits DLXS frames to every connected client. Clients receive a DLXS header, solution rows, and finally a sentinel row (`solution_id = 0`, `entry_count = 0`) marking the end of that problem. Connections remain open so the next problem arrives as another DLXS header followed by rows.
 
-This design supports any number of encoders pushing work to the solver while multiple decoders listen for answers. See `start_test.py` for an interactive reference that sends ASCII puzzles to the server and decodes solutions from a persistent solution socket.
+This design supports any number of encoders pushing work to the solver while multiple decoders listen for answers. See `sudoku_input.py` for an interactive reference that sends ASCII puzzles to the server and decodes solutions from a persistent solution socket.
+
+Behind the scenes each TCP request/response is packetized with DLXB/DLXS headers so the solver can stream many problems over the same sockets. Every problem connection emits:
+
+- A DLXB header + row chunks on the request port.
+- A DLXS header + solution rows on the solution port.
+- A sentinel (`solution_id = 0`, `entry_count = 0`) signaling end-of-problem while leaving the socket open for the next puzzle.
+
+You can observe the protocol end-to-end via `tests/test_dlx_server.cpp` (unit tests) or by piping real Sudoku grids through `sudoku_input.py`, which consumes ASCII puzzles, pushes them over TCP, and prints each decoded grid as soon as the sentinel arrives.
+
+### Scheduler Workspace (`scheduler-rs`)
+
+> **WARNING**: **This module is in early development**
+
+The repository also includes a Rust workspace under `scheduler-rs/` that builds higher-level scheduling tools on top of the DLX binary transport:
+
+- `scheduler_core` — shared DLXB/DLXS packet models, TCP helpers, and domain structs (`Resource`, `Task`, `SchedulerProblem`).
+- `scheduler_encoder` — library + CLI that convert scheduler problem descriptions into DLXB streams (stdout or a TCP socket).
+- `scheduler_decoder` — library + CLI that read DLXS rows (stdin or a socket) and reconstruct schedules.
+- `scheduler_server` — Axum-based REST stub that will eventually expose HTTP APIs backed by the encoder/decoder crates.
+
+The workspace is pinned to the Rust toolchain listed in the build requirements. Conan automatically builds it via the `scheduler-rs` CMake custom target, but you can also work on it directly:
+
+Because the Rust crates speak the same DLXB/DLXS packet definitions as the C++ stack, you can mix and match encoders/decoders on either side of the TCP server. Coverage for the workspace is included automatically when running `conan coverage` (the command merges Rust `cargo llvm-cov` output into the combined LCOV/HTML report).
 
 #### Sudoku Decoder
 
