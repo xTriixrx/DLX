@@ -145,6 +145,19 @@ The `dlx` application takes a DLX binary cover matrix as input and emits every p
 
 Passing `-` for either argument switches to stdin/stdout. When the binary solution output is written to stdout, console printing is automatically suppressed; otherwise, human-readable rows are streamed via the sink infrastructure while the DLXS file is written to the requested path.
 
+#### DLX TCP Server
+
+The `dlx` binary also exposes a streaming TCP interface so multiple producers and consumers can share the same solver instance:
+
+```bash
+./build/dlx --server <problem_port> <solution_port>
+```
+
+- **Problem port** accepts DLXB covers. Each TCP connection represents one problem: write the DLXB header and row chunks, then close the socket.
+- **Solution port** emits DLXS frames to every connected client. Clients receive a DLXS header, solution rows, and finally a sentinel row (`solution_id = 0`, `entry_count = 0`) marking the end of that problem. Connections remain open so the next problem arrives as another DLXS header followed by rows.
+
+This design supports any number of encoders pushing work to the solver while multiple decoders listen for answers. See `start_test.py` for an interactive reference that sends ASCII puzzles to the server and decodes solutions from a persistent solution socket.
+
 #### Sudoku Decoder
 
 The `sudoku_decoder` application takes the original sudoku problem file plus the binary solution rows and reconstructs solved grids:
@@ -228,6 +241,14 @@ Readers call `dlx_read_row_chunk` until it returns `0`, which indicates EOF. Bec
 <p align="center">
   <img src="imgs/dlx_binary_frame_dlxs.svg" alt="DLXS frame grid" width="420"/>
 </p>
+
+Each solution row uses the serialized layout:
+
+1. `solution_id` (32 bits) — monotonically increasing identifier assigned by the solver.
+2. `entry_count` (16 bits) — number of row indices that follow.
+3. `row_indices[i]` (`entry_count` × 32 bits) — identifiers of the option rows that compose the solution.
+
+When streaming across sockets (e.g., the TCP server), `dlx` emits a **sentinel packet** after the final solution of each problem. The sentinel is encoded as a solution row with `solution_id = 0` and `entry_count = 0`. Consumers that stay connected should treat the sentinel as an end-of-problem marker and wait for the next DLXS header to begin processing the following puzzle (one DLXS header + rows per problem). File-based workflows can simply stop reading at EOF—the sentinel is primarily for the TCP interface so a single connection can carry multiple problems.
 
 ##### DLXS Binary Solution Row
 

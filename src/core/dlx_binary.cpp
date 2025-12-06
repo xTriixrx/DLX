@@ -4,7 +4,6 @@
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
-#include <vector>
 
 static uint16_t dlx_htons(uint16_t value)
 {
@@ -355,13 +354,11 @@ void dlx_free_solution_row(struct DlxSolutionRow* row)
 
 
 struct node* dlx_read_binary(FILE* input,
-                            char*** titles_out,
-                            char*** solutions_out,
-                            int* item_count_out,
-                            int* option_count_out)
+                             char*** solutions_out,
+                             int* item_count_out,
+                             int* option_count_out)
 {
-    if (input == NULL || titles_out == NULL || solutions_out == NULL || item_count_out == NULL
-        || option_count_out == NULL)
+    if (input == NULL || solutions_out == NULL || item_count_out == NULL || option_count_out == NULL)
     {
         return NULL;
     }
@@ -372,90 +369,9 @@ struct node* dlx_read_binary(FILE* input,
         return NULL;
     }
 
-    FILE* temp = tmpfile();
-    if (temp == NULL)
-    {
-        return NULL;
-    }
-
-    // Write column titles
-    for (uint32_t col = 0; col < header.column_count; col++)
-    {
-        fprintf(temp, "COL%u%s", col, (col + 1 == header.column_count) ? "\n" : " ");
-    }
-
-    struct DlxRowChunk chunk = {0};
-    while (true)
-    {
-        int status = dlx_read_row_chunk(input, &chunk);
-        if (status == 0)
-            break;
-        if (status == -1)
-        {
-            dlx_free_row_chunk(&chunk);
-            fclose(temp);
-            return NULL;
-        }
-
-        std::vector<char> row(header.column_count, '0');
-        for (int i = 0; i < chunk.entry_count; i++)
-        {
-            uint32_t column = chunk.columns[i];
-            if (column < header.column_count)
-            {
-                row[column] = '1';
-            }
-        }
-
-        for (uint32_t col = 0; col < header.column_count; col++)
-        {
-            fputc(row[col], temp);
-            if (col + 1 == header.column_count)
-            {
-                fputc('\n', temp);
-            }
-            else
-            {
-                fputc(' ', temp);
-            }
-        }
-    }
-
-    dlx_free_row_chunk(&chunk);
-    fflush(temp);
-
-    rewind(temp);
-    int itemCount = dlx::Core::getItemCount(temp);
-    rewind(temp);
-    int nodeCount = itemCount + dlx::Core::getNodeCount(temp);
-    rewind(temp);
-    int optionCount = dlx::Core::getOptionsCount(temp);
-    rewind(temp);
-
-    char** titles = static_cast<char**>(malloc(sizeof(char*) * itemCount));
-    char** solutions = static_cast<char**>(calloc(optionCount, sizeof(char*)));
-    if (titles == NULL || solutions == NULL)
-    {
-        fclose(temp);
-        free(titles);
-        free(solutions);
-        return NULL;
-    }
-
-    struct node* matrix = dlx::Core::generateMatrix(temp, titles, nodeCount);
-    fclose(temp);
-
-    if (matrix == NULL)
-    {
-        free(titles);
-        free(solutions);
-        return NULL;
-    }
-
-    *titles_out = titles;
-    *solutions_out = solutions;
-    *item_count_out = itemCount;
-    *option_count_out = optionCount;
-
-    return matrix;
+    return dlx::Core::generateMatrixBinary(input,
+                                           header,
+                                           solutions_out,
+                                           item_count_out,
+                                           option_count_out);
 }

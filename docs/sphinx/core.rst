@@ -232,7 +232,7 @@ Streaming Interfaces
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   struct node* dlx_read_binary(FILE* input, char*** titles_out, char*** solutions_out, int* item_count_out, int* option_count_out);
+   struct node* dlx_read_binary(FILE* input, char*** solutions_out, int* item_count_out, int* option_count_out);
 
 .. doxygenfunction:: dlx_read_binary
    :project: dlx
@@ -352,7 +352,7 @@ Solver Interfaces
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   struct node* generateMatrix(FILE*, char**, int);
+   struct node* generateMatrix(FILE*, int);
 
 .. doxygenfunction:: generateMatrix
    :project: dlx
@@ -361,22 +361,7 @@ Solver Interfaces
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   struct node* generateMatrixFromChunks(std::istream& source,
-                                         uint32_t column_count,
-                                         uint32_t row_count,
-                                         char*** titles_out,
-                                         char*** solutions_out,
-                                         int* item_count_out,
-                                         int* option_count_out);
-
-.. doxygenfunction:: generateMatrixFromChunks
-   :project: dlx
-
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   int generateTitles(struct node*, char**, char*);
+   int generateTitles(struct node*, char*);
 
 .. doxygenfunction:: generateTitles
    :project: dlx
@@ -385,7 +370,7 @@ Solver Interfaces
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   void freeMemory(struct node*, char**, char**, int);
+   void freeMemory(struct node*, char**);
 
 .. doxygenfunction:: freeMemory
    :project: dlx

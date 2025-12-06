@@ -21,9 +21,12 @@ find_package(GTest CONFIG REQUIRED)
 find_package(Doxygen)
 find_package(Python3 COMPONENTS Interpreter)
 
+option(ENABLE_SCHEDULER_RS "Build the scheduler-rs workspace with Cargo" ON)
+
 add_library(dlx_binary STATIC
     src/core/dlx_binary.cpp
     src/core/dlx_server.cpp
+    src/core/dlx_tcp_server.cpp
     src/core/dlx_core.cpp
     src/core/solution_sink.cpp
 )
@@ -59,7 +62,7 @@ if(BUILD_TESTING)
     add_test(NAME sudoku_decoder_tests COMMAND test_sudoku_decoder)
     set_tests_properties(sudoku_decoder_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-    add_executable(test_dlx_binary tests/test_dlx_binary.cpp)
+    add_executable(test_dlx_binary tests/test_dlx_binary.cpp tests/ascii_binary_utils.cpp)
     target_link_libraries(test_dlx_binary PRIVATE dlx_binary sudoku_encoder_lib GTest::gtest_main)
     add_test(NAME dlx_binary_tests COMMAND test_dlx_binary)
     set_tests_properties(dlx_binary_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
@@ -80,6 +83,11 @@ if(BUILD_TESTING)
     add_test(NAME sudoku_pipeline_tests COMMAND test_sudoku_pipeline)
     set_tests_properties(sudoku_pipeline_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+    add_executable(test_dlx_server tests/test_dlx_server.cpp tests/ascii_binary_utils.cpp)
+    target_link_libraries(test_dlx_server PRIVATE dlx_binary sudoku_encoder_lib GTest::gtest_main)
+    add_test(NAME dlx_server_tests COMMAND test_dlx_server)
+    set_tests_properties(dlx_server_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
     if(Python3_Interpreter_FOUND)
         add_test(NAME conan_execute_tests
                  COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_conan_execute.py)
@@ -95,4 +103,31 @@ if(DOXYGEN_FOUND)
         VERBATIM)
 else()
     message(STATUS "Doxygen not found. Documentation target will be unavailable.")
+endif()
+
+if(ENABLE_SCHEDULER_RS)
+    find_program(CARGO_EXECUTABLE cargo)
+    if(CARGO_EXECUTABLE)
+        set(SCHEDULER_RS_DIR ${CMAKE_SOURCE_DIR}/scheduler-rs)
+        if(EXISTS ${SCHEDULER_RS_DIR}/Cargo.toml)
+            add_custom_target(scheduler-rs ALL
+                COMMAND ${CARGO_EXECUTABLE} build --workspace
+                WORKING_DIRECTORY ${SCHEDULER_RS_DIR}
+                USES_TERMINAL
+                COMMENT "Building scheduler-rs workspace via Cargo")
+
+            if(BUILD_TESTING)
+                add_custom_target(scheduler-rs-tests
+                    COMMAND ${CARGO_EXECUTABLE} test --workspace
+                    WORKING_DIRECTORY ${SCHEDULER_RS_DIR}
+                    USES_TERMINAL
+                    COMMENT "Running scheduler-rs workspace tests")
+                add_dependencies(scheduler-rs-tests scheduler-rs)
+            endif()
+        else()
+            message(WARNING "scheduler-rs workspace not found under ${SCHEDULER_RS_DIR}")
+        endif()
+    else()
+        message(WARNING "cargo executable not found; scheduler-rs build skipped.")
+    endif()
 endif()

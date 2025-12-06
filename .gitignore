@@ -4,4 +4,7 @@ coverage/
 obj/
 plans/
 .DS_Store
+docs/sphinx/_ext/
+scheduler-rs/target/
+scheduler-rs/Cargo.lock
 conan/extensions/commands/__pycache__/

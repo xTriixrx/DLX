@@ -268,6 +268,11 @@ int decode_sudoku_solution(const char* puzzle_path,
                 break;
             }
 
+            if (row.solution_id == 0 && row.entry_count == 0)
+            {
+                break;
+            }
+
             if (apply_solution_indices(row.row_indices,
                                        row.entry_count,
                                        &vector,

@@ -4,9 +4,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <ostream>
-#include <istream>
 #include <vector>
 #include "core/solution_sink.h"
+
+struct DlxCoverHeader;
 
 /**************************************************************************************************************
  *                                            DLX Application                                                 *
@@ -39,12 +40,23 @@ namespace dlx {
 
 struct SolutionOutput
 {
+    using BinaryRowCallback = void (*)(void* ctx, const uint32_t* row_ids, int level);
+
     SolutionSink* sink;
     FILE* binary_file;
+    BinaryRowCallback binary_callback;
+    void* binary_context;
     uint32_t next_solution_id;
     uint32_t column_count;
 
-    SolutionOutput() : sink(nullptr), binary_file(nullptr), next_solution_id(1), column_count(0) {}
+    SolutionOutput()
+        : sink(nullptr)
+        , binary_file(nullptr)
+        , binary_callback(nullptr)
+        , binary_context(nullptr)
+        , next_solution_id(1)
+        , column_count(0)
+    {}
     void emit_binary_row(const uint32_t* row_ids, int level);
 };
 
@@ -54,17 +66,15 @@ public:
     static int getNodeCount(FILE*);
     static int getItemCount(FILE*);
     static int getOptionsCount(FILE*);
-    static struct node* generateMatrix(FILE*, char**, int);
-    static struct node* generateMatrixFromChunks(std::istream& source,
-                                                 uint32_t column_count,
-                                                 uint32_t row_count,
-                                                 char*** titles_out,
-                                                 char*** solutions_out,
-                                                 int* item_count_out,
-                                                 int* option_count_out);
+    static struct node* generateMatrix(FILE*, int);
+    static struct node* generateMatrixBinary(FILE* input,
+                                             const struct DlxCoverHeader& header,
+                                             char*** solutions_out,
+                                             int* item_count_out,
+                                             int* option_count_out);
     static void setMatrixDumpStream(std::ostream* stream);
     static void search(struct node*, int, char**, uint32_t*, SolutionOutput&);
-    static void freeMemory(struct node*, char**, char**, int);
+    static void freeMemory(struct node*, char**);
     static int dlx_enable_binary_solution_output(SolutionOutput& output_ctx, FILE* output, uint32_t column_count);
     static void dlx_disable_binary_solution_output(SolutionOutput& output_ctx);
     static void dlx_set_stdout_suppressed(bool suppressed);
@@ -78,7 +88,7 @@ private:
     static void printSolutions(char**, const uint32_t*, int, SolutionOutput&);
     static struct node* generateHeadNode(int);
     static struct node* pickItem(struct node*);
-    static int generateTitles(struct node*, char**, char*);
+    static int generateTitles(struct node*, char*);
     static void handleSpacerNodes(struct node*, int*, int, int);
 };
 

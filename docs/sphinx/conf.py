@@ -21,9 +21,13 @@ author = "Vincent Nigro"
 release = "0.1"
 
 sys.path.insert(0, os.path.abspath("../../src"))
+ext_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "_ext"))
+if os.path.isdir(ext_dir):
+    sys.path.insert(0, ext_dir)
 
 extensions = [
     "breathe",
+    "rustdoc",
 ]
 
 templates_path = ["_templates"]
@@ -40,3 +44,4 @@ doxygen_xml = os.path.join(root_dir, "docs", "build", "doxygen", "xml")
 
 breathe_projects = {"dlx": doxygen_xml}
 breathe_default_project = "dlx"
+rustdoc_xml_dir = os.path.join(root_dir, "docs", "build", "rustdoc", "xml")

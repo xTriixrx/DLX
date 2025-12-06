@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "scheduler_core",
+    "scheduler_encoder",
+    "scheduler_decoder",
+    "scheduler_server",
+]
+
+resolver = "2"

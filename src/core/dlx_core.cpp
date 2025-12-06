@@ -9,6 +9,7 @@
 #include <locale.h>
 #include <string.h>
 #include <vector>
+#include <algorithm>
 #include <limits.h>
 #include <sys/stat.h>
 
@@ -66,6 +67,27 @@ void dumpMatrixStructure(const struct node* matrix,
     }
 }
 
+void initialize_column_headers(struct node* matrix, uint32_t column_count)
+{
+    matrix[0].right = matrix;
+    matrix[0].left = matrix;
+
+    for (uint32_t i = 0; i < column_count; ++i)
+    {
+        struct node* column = &matrix[i + 1];
+        column->len = 0;
+        column->top = matrix;
+        column->left = &matrix[i];
+        column->right = matrix;
+        column->up = column;
+        column->down = column;
+        column->data = static_cast<int>(i + 1);
+
+        matrix[i].right = column;
+        matrix[0].left = column;
+    }
+}
+
 } // namespace
 
 namespace dlx {
@@ -87,6 +109,10 @@ void SolutionOutput::emit_binary_row(const uint32_t* row_ids, int level)
 {
     if (binary_file == NULL || level <= 0)
     {
+        if (binary_callback != nullptr)
+        {
+            binary_callback(binary_context, row_ids, level);
+        }
         return;
     }
 
@@ -105,6 +131,11 @@ void SolutionOutput::emit_binary_row(const uint32_t* row_ids, int level)
         return;
     }
     next_solution_id += 1;
+
+    if (binary_callback != nullptr)
+    {
+        binary_callback(binary_context, row_ids, level);
+    }
 }
 
 int Core::dlx_enable_binary_solution_output(SolutionOutput& output_ctx, FILE* output, uint32_t column_count)
@@ -440,11 +471,10 @@ struct node* Core::pickItem(struct node* head)
  * are updated as the file is being read.
  * 
  * @param FILE* A file pointer to a file which contains a cover definition.
- * @param char** A char pointer of pointers to access the titles array.
  * @param int An integer representing the total number of nodes that need to be created.
  * @return struct node* Returns the address of the malloc'd matrix structure.
  */ 
-struct node* Core::generateMatrix(FILE* cover, char** titles, int nodeCount)
+struct node* Core::generateMatrix(FILE* cover, int nodeCount)
 {
     ssize_t read;
     size_t len = 0;
@@ -458,9 +488,9 @@ struct node* Core::generateMatrix(FILE* cover, char** titles, int nodeCount)
     // Malloc matrix and populate head node to begin insertion
     struct node* matrix = generateHeadNode(nodeCount);
 
-    // Read first line of cover file and generate titles array
+    // Read first line of cover file and generate column headers
     read = getline(&buffer, &len, cover);
-    currNodeCount = generateTitles(matrix, titles, buffer);
+    currNodeCount = generateTitles(matrix, buffer);
     const int itemCount = currNodeCount;
 
     // Read line by line of entire cover file
@@ -550,142 +580,211 @@ struct node* Core::generateMatrix(FILE* cover, char** titles, int nodeCount)
     return matrix;
 }
 
-struct node* Core::generateMatrixFromChunks(std::istream& source,
-                                            uint32_t column_count,
-                                            uint32_t row_count,
-                                            char*** titles_out,
-                                            char*** solutions_out,
-                                            int* item_count_out,
-                                            int* option_count_out)
+struct node* Core::generateMatrixBinary(FILE* input,
+                                        const struct DlxCoverHeader& header,
+                                        char*** solutions_out,
+                                        int* item_count_out,
+                                        int* option_count_out)
 {
-    if (titles_out == nullptr || solutions_out == nullptr || item_count_out == nullptr
-        || option_count_out == nullptr)
+    if (input == NULL || solutions_out == nullptr || item_count_out == nullptr || option_count_out == nullptr)
     {
         return nullptr;
     }
 
-    if (column_count == 0)
+    if (header.column_count == 0 || header.column_count > static_cast<uint32_t>(INT_MAX))
     {
         return nullptr;
     }
 
-    // Titles are not embedded in the binary stream, so synthesize "COL<n>" placeholders.
-    char** titles = static_cast<char**>(malloc(sizeof(char*) * column_count));
-    if (titles == nullptr)
-    {
-        return nullptr;
-    }
+    const uint32_t column_count = header.column_count;
+    const int itemCount = static_cast<int>(column_count);
 
-    for (uint32_t i = 0; i < column_count; i++)
-    {
-        titles[i] = static_cast<char*>(malloc(16));
-        if (titles[i] == nullptr)
-        {
-            for (uint32_t j = 0; j < i; j++)
-            {
-                free(titles[j]);
-            }
-            free(titles);
-            return nullptr;
-        }
-        snprintf(titles[i], 16, "COL%u", i);
-    }
-
-    // Prepare solution strings placeholder (one per row).
-    char** solutions = static_cast<char**>(calloc(row_count, sizeof(char*)));
-    if (solutions == nullptr)
-    {
-        for (uint32_t i = 0; i < column_count; i++)
-        {
-            free(titles[i]);
-        }
-        free(titles);
-        return nullptr;
-    }
-
-    *titles_out = titles;
-    *solutions_out = solutions;
-    *item_count_out = static_cast<int>(column_count);
-    *option_count_out = static_cast<int>(row_count);
-
-    // For now, fall back to text implementation by formatting the chunks into a temporary buffer.
-    // This preserves existing behavior while the binary-native generator is implemented.
-    FILE* temp = tmpfile();
-    if (temp == NULL)
-    {
-        dlx::Core::freeMemory(nullptr, solutions, titles, column_count);
-        return nullptr;
-    }
-
-    // Write synthesized header line.
-    for (uint32_t col = 0; col < column_count; col++)
-    {
-        fprintf(temp, "COL%u%s", col, (col + 1 == column_count) ? "\n" : " ");
-    }
-
-    while (source.good())
+    struct BinaryRowDefinition
     {
         uint32_t row_id;
-        uint16_t entry_count;
-        source.read(reinterpret_cast<char*>(&row_id), sizeof(row_id));
-        if (!source.good())
+        std::vector<uint32_t> columns;
+    };
+
+    std::vector<BinaryRowDefinition> rows;
+    rows.reserve(header.row_count);
+
+    size_t total_entries = 0;
+    struct DlxRowChunk chunk = {0};
+    while (true)
+    {
+        int status = dlx_read_row_chunk(input, &chunk);
+        if (status == 0)
         {
             break;
         }
-
-        source.read(reinterpret_cast<char*>(&entry_count), sizeof(entry_count));
-        if (!source.good())
+        if (status == -1)
         {
-            fclose(temp);
+            dlx_free_row_chunk(&chunk);
             return nullptr;
         }
 
-        std::vector<char> row(column_count, '0');
-        for (uint16_t i = 0; i < entry_count; i++)
+        BinaryRowDefinition row = {0};
+        row.row_id = (chunk.row_id == 0) ? static_cast<uint32_t>(rows.size() + 1) : chunk.row_id;
+        if (row.row_id > static_cast<uint32_t>(INT_MAX))
         {
-            uint32_t column;
-            source.read(reinterpret_cast<char*>(&column), sizeof(column));
-            if (!source.good())
-            {
-                fclose(temp);
-                return nullptr;
-            }
-
-            if (column < column_count)
-            {
-                row[column] = '1';
-            }
+            dlx_free_row_chunk(&chunk);
+            return nullptr;
         }
 
-        for (uint32_t col = 0; col < column_count; col++)
+        row.columns.assign(chunk.columns, chunk.columns + chunk.entry_count);
+        std::sort(row.columns.begin(), row.columns.end());
+        bool invalid_column = false;
+        for (uint32_t column : row.columns)
         {
-            fputc(row[col], temp);
-            fputc((col + 1 == column_count) ? '\n' : ' ', temp);
+            if (column >= column_count)
+            {
+                invalid_column = true;
+                break;
+            }
+        }
+        if (invalid_column)
+        {
+            dlx_free_row_chunk(&chunk);
+            return nullptr;
+        }
+
+        total_entries += row.columns.size();
+        rows.emplace_back(std::move(row));
+    }
+    dlx_free_row_chunk(&chunk);
+
+    if (rows.size() > static_cast<size_t>(INT_MAX))
+    {
+        return nullptr;
+    }
+
+    char** solutions = static_cast<char**>(calloc(rows.size(), sizeof(char*)));
+    if (solutions == nullptr)
+    {
+        return nullptr;
+    }
+
+    size_t spacer_nodes = rows.size() + 1;
+    size_t total_nodes = static_cast<size_t>(column_count) + total_entries + spacer_nodes;
+    if (total_nodes > static_cast<size_t>(INT_MAX))
+    {
+        free(solutions);
+        return nullptr;
+    }
+
+    int nodeCount = static_cast<int>(total_nodes);
+    struct node* matrix = generateHeadNode(nodeCount);
+    if (matrix == nullptr)
+    {
+        free(solutions);
+        return nullptr;
+    }
+
+    initialize_column_headers(matrix, column_count);
+
+    int currNodeCount = itemCount;
+    int prevRowCount = 0;
+    int spaceNodeCount = 0;
+    int pending_row_id = 0;
+    bool has_pending_row = false;
+
+    for (size_t row_index = 0; row_index < rows.size(); ++row_index)
+    {
+        handleSpacerNodes(matrix, &spaceNodeCount, currNodeCount, prevRowCount);
+        if (has_pending_row)
+        {
+            matrix[currNodeCount + 1].data = -pending_row_id;
+        }
+        pending_row_id = static_cast<int>(rows[row_index].row_id);
+        has_pending_row = true;
+
+        currNodeCount++;
+        prevRowCount = 0;
+
+        const std::vector<uint32_t>& columns = rows[row_index].columns;
+        size_t column_cursor = 0;
+
+        for (int assocItemCount = 1; assocItemCount <= itemCount; ++assocItemCount)
+        {
+            while (column_cursor < columns.size()
+                   && columns[column_cursor] + 1 < static_cast<uint32_t>(assocItemCount))
+            {
+                column_cursor++;
+            }
+
+            if (column_cursor >= columns.size())
+            {
+                break;
+            }
+
+            if (columns[column_cursor] + 1 != static_cast<uint32_t>(assocItemCount))
+            {
+                continue;
+            }
+
+            struct node* item = &matrix[assocItemCount];
+            struct node* last = item;
+            while (last->down != item)
+            {
+                last = last->down;
+            }
+
+            int new_index = currNodeCount + 1;
+            matrix[new_index].data = new_index;
+            item->len += 1;
+            item->up = &matrix[new_index];
+            last->down = &matrix[new_index];
+            matrix[new_index].up = last;
+            matrix[new_index].top = item;
+            matrix[new_index].down = item;
+
+            prevRowCount++;
+            currNodeCount++;
+            column_cursor++;
         }
     }
 
-    fflush(temp);
-    rewind(temp);
+    matrix[currNodeCount + 1].top = matrix;
+    if (has_pending_row)
+    {
+        matrix[currNodeCount + 1].data = -pending_row_id;
+    }
+    else
+    {
+        matrix[currNodeCount + 1].data = spaceNodeCount;
+    }
+    spaceNodeCount--;
+    matrix[currNodeCount + 1].down = matrix;
+    if (prevRowCount == 0)
+    {
+        matrix[currNodeCount + 1].up = matrix;
+    }
+    else
+    {
+        matrix[currNodeCount - prevRowCount].down = &matrix[currNodeCount];
+        matrix[currNodeCount + 1].up = &matrix[(currNodeCount + 1) - prevRowCount];
+    }
 
-    int nodeCount = static_cast<int>(column_count) + dlx::Core::getNodeCount(temp);
-    rewind(temp);
+    if (g_matrix_dump_stream != nullptr)
+    {
+        dumpMatrixStructure(matrix, nodeCount, itemCount, *g_matrix_dump_stream);
+    }
 
-    struct node* matrix = dlx::Core::generateMatrix(temp, titles, nodeCount);
-    fclose(temp);
+    *solutions_out = solutions;
+    *item_count_out = itemCount;
+    *option_count_out = static_cast<int>(rows.size());
     return matrix;
 }
 
 /**
  * A utility function to assist in the generation of the matrix structure and appropriate links, this function
- * is dedicated to the construction of the item nodes (column headers) and reading the title tokens from the titleLine
- * into the title array.
+ * is dedicated to the construction of the item nodes (column headers) by reading tokens from the titleLine.
  * 
  * @param struct node* A node pointer to the head of the matrix.
- * @param char** A char pointer of pointers to access the titles array.
  * @param char* A char pointer to the item line which is the first line in the cover file.
  * @return int Returns the current node count of how many item nodes were created from this method.
  */ 
-int Core::generateTitles(struct node* matrix, char** titles, char* titleLine)
+int Core::generateTitles(struct node* matrix, char* titleLine)
 {
     char* newlinePtr;
     int currNodeCount = 0;
@@ -951,18 +1050,10 @@ int Core::getOptionNodesCount(FILE* coverFile)
  * 
  * @param struct node* The matrix array associated with the read cover file.
  * @param char** An array of solutions
- * @param char** An array of titles
- * @param int The number of titles in the titles array.
  * @return void
  */ 
-void Core::freeMemory(struct node* matrix, char** solutions, char** titles, int itemCount)
+void Core::freeMemory(struct node* matrix, char** solutions)
 {
-    for (int i = 0; i < itemCount; i++)
-    {
-        free(titles[i]);
-    }
-
-    free(titles);
     free(matrix);
     free(solutions);
 }

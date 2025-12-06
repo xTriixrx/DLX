@@ -54,6 +54,19 @@ Core Library
    :linenos:
    :class: astro-mui-prototypes
 
+``include/core/dlx_tcp_server.h``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: cpp
+   :class: astro-mui-prototypes
+
+   #include "core/dlx_tcp_server.h"
+
+.. literalinclude:: ../../include/core/dlx_tcp_server.h
+   :language: cpp
+   :linenos:
+   :class: astro-mui-prototypes
+
 Sudoku Pipeline
 ---------------
 

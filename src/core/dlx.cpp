@@ -1,5 +1,6 @@
 #include "core/dlx.h"
 #include "core/dlx_binary.h"
+#include "core/dlx_tcp_server.h"
 #include "core/solution_sink.h"
 #include <filesystem>
 #include <iostream>
@@ -32,16 +33,39 @@
 static void print_usage(void)
 {
     printf("./dlx [cover_file] [solution_output]\n");
+    printf("./dlx --server [problem_port] [solution_port]\n");
     printf("Hints:\n");
     printf("  Omit arguments or pass '-' to stream via stdin/stdout.\n");
 }
 
 int main(int argc, char** argv)
 {
-    if (argc > 3)
+    if (argc > 3 && strcmp(argv[1], "--server") != 0)
     {
         print_usage();
         exit(1);
+    }
+
+    if (argc == 4 && strcmp(argv[1], "--server") == 0)
+    {
+        long request_port = strtol(argv[2], nullptr, 10);
+        long solution_port = strtol(argv[3], nullptr, 10);
+        if (request_port <= 0 || request_port > 65535 || solution_port <= 0 || solution_port > 65535)
+        {
+            print_usage();
+            exit(1);
+        }
+
+        dlx::TcpServerConfig config{static_cast<uint16_t>(request_port), static_cast<uint16_t>(solution_port)};
+        dlx::DlxTcpServer server(config);
+        if (!server.start())
+        {
+            printf("Failed to start DLX TCP server.\n");
+            exit(1);
+        }
+
+        server.wait();
+        return EXIT_SUCCESS;
     }
 
     const char* cover_path = (argc >= 2) ? argv[1] : "-";
@@ -54,7 +78,6 @@ int main(int argc, char** argv)
     }
 
     struct node* matrix = NULL;
-    char** titles = NULL;
     char** solutions = NULL;
     int itemCount = 0;
     int optionCount = 0;
@@ -66,23 +89,42 @@ int main(int argc, char** argv)
         exit(1);
     }
 
-    matrix = dlx_read_binary(cover_stream, &titles, &solutions, &itemCount, &optionCount);
+    struct DlxCoverHeader header;
+    if (dlx_read_cover_header(cover_stream, &header) != 0)
+    {
+        if (cover_stream != stdin)
+        {
+            fclose(cover_stream);
+        }
+        printf("Failed to read binary cover header from %s.\n", cover_path);
+        exit(1);
+    }
+
+    matrix = dlx::Core::generateMatrixBinary(cover_stream,
+                                             header,
+                                             &solutions,
+                                             &itemCount,
+                                             &optionCount);
+    if (matrix == NULL)
+    {
+        if (cover_stream != stdin)
+        {
+            fclose(cover_stream);
+        }
+        printf("Failed to parse binary cover file %s.\n", cover_path);
+        exit(1);
+    }
+
     if (cover_stream != stdin)
     {
         fclose(cover_stream);
-    }
-
-    if (matrix == NULL)
-    {
-        printf("Failed to read binary cover file %s.\n", cover_path);
-        exit(1);
     }
 
     uint32_t* solution_row_ids = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * optionCount));
     if (solution_row_ids == NULL)
     {
         printf("Unable to allocate solution buffer.\n");
-        dlx::Core::freeMemory(matrix, solutions, titles, itemCount);
+        dlx::Core::freeMemory(matrix, solutions);
         exit(1);
     }
 
@@ -91,7 +133,7 @@ int main(int argc, char** argv)
     if (binary_output == NULL)
     {
         printf("Unable to create output file %s.\n", solution_output_path);
-        dlx::Core::freeMemory(matrix, solutions, titles, itemCount);
+        dlx::Core::freeMemory(matrix, solutions);
         free(solution_row_ids);
         exit(1);
     }
@@ -119,7 +161,7 @@ int main(int argc, char** argv)
         {
             fclose(binary_output);
         }
-        dlx::Core::freeMemory(matrix, solutions, titles, itemCount);
+        dlx::Core::freeMemory(matrix, solutions);
         free(solution_row_ids);
         exit(1);
     }
@@ -142,6 +184,6 @@ int main(int argc, char** argv)
     }
 
     free(solution_row_ids);
-    dlx::Core::freeMemory(matrix, solutions, titles, itemCount);
+    dlx::Core::freeMemory(matrix, solutions);
     return EXIT_SUCCESS;
 }

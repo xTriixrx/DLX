@@ -73,9 +73,8 @@ int dlx_write_solution_row(FILE* output,
 int dlx_read_solution_row(FILE* input, struct DlxSolutionRow* row);
 void dlx_free_solution_row(struct DlxSolutionRow* row);
 struct node* dlx_read_binary(FILE* input,
-                            char*** titles_out,
-                            char*** solutions_out,
-                            int* item_count_out,
-                            int* option_count_out);
+                             char*** solutions_out,
+                             int* item_count_out,
+                             int* option_count_out);
 
 #endif

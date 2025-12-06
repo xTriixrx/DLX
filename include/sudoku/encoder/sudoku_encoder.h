@@ -24,6 +24,13 @@
 #define COL_DIGIT_CONSTRAINTS (GRID_SIZE * DIGIT_COUNT)
 /** @brief Column offset for box/digit constraints. */
 #define BOX_DIGIT_OFFSET (COL_DIGIT_OFFSET + COL_DIGIT_CONSTRAINTS)
+/** @brief Total box/digit constraints. */
+#define BOX_DIGIT_CONSTRAINTS (GRID_SIZE * DIGIT_COUNT)
+
+#ifdef __cplusplus
+static_assert(CELL_CONSTRAINTS + ROW_DIGIT_CONSTRAINTS + COL_DIGIT_CONSTRAINTS + BOX_DIGIT_CONSTRAINTS == COLUMN_COUNT,
+              "Sudoku constraint columns must match declared column count");
+#endif
 
 /** @brief Candidate metadata describing the row/column/digit triple. */
 struct SudokuCandidate
