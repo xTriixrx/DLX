@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fstream>
+#include <iostream>
 #include <vector>
 
 struct candidate_vector
@@ -228,20 +230,30 @@ int decode_sudoku_solution(const char* puzzle_path,
 
     const char* resolved_solution_path = (solution_rows_path == NULL) ? "-" : solution_rows_path;
     bool read_from_stdin = (strcmp(resolved_solution_path, "-") == 0);
-    FILE* rows_file = read_from_stdin ? stdin : fopen(resolved_solution_path, "rb");
-    if (rows_file == NULL)
+    std::ifstream rows_file;
+    std::istream* rows_stream = nullptr;
+    if (read_from_stdin)
     {
-        fprintf(stderr, "Unable to open solution rows file %s\n", resolved_solution_path);
-        if (!write_to_stdout)
+        rows_stream = &std::cin;
+    }
+    else
+    {
+        rows_file.open(resolved_solution_path, std::ios::binary);
+        if (!rows_file.is_open())
         {
-            fclose(output);
+            fprintf(stderr, "Unable to open solution rows file %s\n", resolved_solution_path);
+            if (!write_to_stdout)
+            {
+                fclose(output);
+            }
+            free_candidate_vector(&vector);
+            return 1;
         }
-        free_candidate_vector(&vector);
-        return 1;
+        rows_stream = &rows_file;
     }
 
     struct DlxSolutionHeader header;
-    if (dlx_read_solution_header(rows_file, &header) != 0)
+    if (dlx_read_solution_header(*rows_stream, &header) != 0)
     {
         fprintf(stderr, "Failed to read solution header from %s\n", resolved_solution_path);
         status = 1;
@@ -256,7 +268,7 @@ int decode_sudoku_solution(const char* puzzle_path,
         struct DlxSolutionRow row = {0};
         while (status == 0)
         {
-            int read_status = dlx_read_solution_row(rows_file, &row);
+            int read_status = dlx_read_solution_row(*rows_stream, &row);
             if (read_status == 0)
             {
                 break;
@@ -293,9 +305,9 @@ int decode_sudoku_solution(const char* puzzle_path,
         dlx_free_solution_row(&row);
     }
 
-    if (!read_from_stdin)
+    if (!read_from_stdin && rows_file.is_open())
     {
-        fclose(rows_file);
+        rows_file.close();
     }
 
     if (!write_to_stdout)

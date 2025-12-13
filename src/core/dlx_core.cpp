@@ -580,13 +580,13 @@ struct node* Core::generateMatrix(FILE* cover, int nodeCount)
     return matrix;
 }
 
-struct node* Core::generateMatrixBinary(FILE* input,
-                                        const struct DlxCoverHeader& header,
-                                        char*** solutions_out,
-                                        int* item_count_out,
-                                        int* option_count_out)
+struct node* Core::generateMatrixBinaryImpl(std::istream& input,
+                                            const struct DlxCoverHeader& header,
+                                            char*** solutions_out,
+                                            int* item_count_out,
+                                            int* option_count_out)
 {
-    if (input == NULL || solutions_out == nullptr || item_count_out == nullptr || option_count_out == nullptr)
+    if (solutions_out == nullptr || item_count_out == nullptr || option_count_out == nullptr)
     {
         return nullptr;
     }
@@ -774,6 +774,15 @@ struct node* Core::generateMatrixBinary(FILE* input,
     *item_count_out = itemCount;
     *option_count_out = static_cast<int>(rows.size());
     return matrix;
+}
+
+struct node* Core::generateMatrixBinary(std::istream& input,
+                                        const struct DlxCoverHeader& header,
+                                        char*** solutions_out,
+                                        int* item_count_out,
+                                        int* option_count_out)
+{
+    return generateMatrixBinaryImpl(input, header, solutions_out, item_count_out, option_count_out);
 }
 
 /**

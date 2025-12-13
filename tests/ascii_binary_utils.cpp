@@ -2,6 +2,7 @@
 #include "core/dlx_binary.h"
 #include <algorithm>
 #include <climits>
+#include <cstdio>
 #include <sstream>
 #include <vector>
 
@@ -25,6 +26,23 @@ std::vector<std::string> tokenize(const std::string& line)
         tokens.push_back(token);
     }
     return tokens;
+}
+
+std::string read_stream(FILE* input)
+{
+    if (input == nullptr)
+    {
+        return {};
+    }
+
+    std::string data;
+    std::vector<char> buffer(4096);
+    size_t bytes = 0;
+    while ((bytes = fread(buffer.data(), 1, buffer.size(), input)) > 0)
+    {
+        data.append(buffer.data(), static_cast<size_t>(bytes));
+    }
+    return data;
 }
 
 } // namespace
@@ -136,8 +154,11 @@ int binary_solution_to_ascii(FILE* input, std::string* ascii_output)
         return -1;
     }
 
+    std::string payload = read_stream(input);
+    std::istringstream stream(payload);
+
     struct DlxSolutionHeader header;
-    if (dlx_read_solution_header(input, &header) != 0)
+    if (dlx_read_solution_header(stream, &header) != 0)
     {
         return -1;
     }
@@ -146,7 +167,7 @@ int binary_solution_to_ascii(FILE* input, std::string* ascii_output)
     struct DlxSolutionRow row = {0};
     while (true)
     {
-        int status = dlx_read_solution_row(input, &row);
+        int status = dlx_read_solution_row(stream, &row);
         if (status == 0)
         {
             break;

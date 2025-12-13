@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <vector>
+#include <fstream>
 
 #define COLUMN_COUNT 324
 
@@ -20,8 +21,8 @@ void write_string_to_file(const char* path, const char* contents)
 
 int count_rows_in_binary_cover(const char* path, std::vector<uint32_t>* first_row = nullptr)
 {
-    FILE* file = fopen(path, "rb");
-    if (file == nullptr)
+    std::ifstream file(path, std::ios::binary);
+    if (!file.is_open())
     {
         ADD_FAILURE() << "Unable to open cover file " << path;
         return 0;
@@ -31,7 +32,6 @@ int count_rows_in_binary_cover(const char* path, std::vector<uint32_t>* first_ro
     if (dlx_read_cover_header(file, &header) != 0)
     {
         ADD_FAILURE() << "Failed to read cover header from " << path;
-        fclose(file);
         return 0;
     }
     EXPECT_EQ(header.column_count, COLUMN_COUNT);
@@ -60,7 +60,6 @@ int count_rows_in_binary_cover(const char* path, std::vector<uint32_t>* first_ro
     }
 
     dlx_free_row_chunk(&chunk);
-    fclose(file);
     return rows;
 }
 
@@ -167,8 +166,8 @@ TEST(SudokuMatrixTest, BinaryCoverOutputMatchesExpectations)
     int result = convert_sudoku_to_cover(puzzle_template, cover_template);
     ASSERT_EQ(result, 0);
 
-    FILE* cover = fopen(cover_template, "rb");
-    ASSERT_NE(cover, nullptr);
+    std::ifstream cover(cover_template, std::ios::binary);
+    ASSERT_TRUE(cover.is_open());
 
     struct DlxCoverHeader header;
     ASSERT_EQ(dlx_read_cover_header(cover, &header), 0);
@@ -189,7 +188,6 @@ TEST(SudokuMatrixTest, BinaryCoverOutputMatchesExpectations)
     }
 
     dlx_free_row_chunk(&chunk);
-    fclose(cover);
     remove(puzzle_template);
     remove(cover_template);
 }

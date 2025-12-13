@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
 #include <vector>
 
 namespace dlx {
@@ -262,35 +263,26 @@ void DlxTcpServer::emit_solution_row(void* ctx, const uint32_t* row_ids, int lev
 
 void DlxTcpServer::process_problem_connection(int client_fd)
 {
-    FILE* temp = tmpfile();
-    if (temp == nullptr)
-    {
-        close(client_fd);
-        return;
-    }
-
+    std::string payload;
     std::vector<char> buffer(kIoBufferSize);
     ssize_t bytes = 0;
     while ((bytes = recv(client_fd, buffer.data(), buffer.size(), 0)) > 0)
     {
-        fwrite(buffer.data(), 1, static_cast<size_t>(bytes), temp);
+        payload.append(buffer.data(), static_cast<size_t>(bytes));
     }
     close(client_fd);
 
     if (bytes < 0)
     {
-        fclose(temp);
         return;
     }
 
-    fflush(temp);
-    rewind(temp);
+    std::istringstream cover_stream(payload);
 
     char** solutions = NULL;
     int itemCount = 0;
     int optionCount = 0;
-    struct node* matrix = dlx_read_binary(temp, &solutions, &itemCount, &optionCount);
-    fclose(temp);
+    struct node* matrix = dlx_read_binary(cover_stream, &solutions, &itemCount, &optionCount);
     if (matrix == NULL)
     {
         return;

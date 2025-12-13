@@ -133,7 +133,7 @@ Binary Interface Helpers
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_read_cover_header(FILE* input, DlxCoverHeader* header);
+   int dlx_read_cover_header(std::istream& input, DlxCoverHeader* header);
 
 .. doxygenfunction:: dlx_read_cover_header
    :project: dlx
@@ -151,7 +151,7 @@ Binary Interface Helpers
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_read_row_chunk(FILE* input, DlxRowChunk* chunk);
+   int dlx_read_row_chunk(std::istream& input, DlxRowChunk* chunk);
 
 .. doxygenfunction:: dlx_read_row_chunk
    :project: dlx
@@ -178,7 +178,7 @@ Binary Interface Helpers
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_read_solution_header(FILE* input, DlxSolutionHeader* header);
+   int dlx_read_solution_header(std::istream& input, DlxSolutionHeader* header);
 
 Streaming Interfaces
 --------------------
@@ -214,7 +214,7 @@ Streaming Interfaces
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_read_solution_row(FILE* input, DlxSolutionRow* row);
+   int dlx_read_solution_row(std::istream& input, DlxSolutionRow* row);
 
 .. doxygenfunction:: dlx_read_solution_row
    :project: dlx
@@ -232,7 +232,7 @@ Streaming Interfaces
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   struct node* dlx_read_binary(FILE* input, char*** solutions_out, int* item_count_out, int* option_count_out);
+   struct node* dlx_read_binary(std::istream& input, char*** solutions_out, int* item_count_out, int* option_count_out);
 
 .. doxygenfunction:: dlx_read_binary
    :project: dlx

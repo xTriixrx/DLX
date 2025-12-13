@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <istream>
 #include <ostream>
 #include <vector>
 #include "core/solution_sink.h"
@@ -67,7 +68,7 @@ public:
     static int getItemCount(FILE*);
     static int getOptionsCount(FILE*);
     static struct node* generateMatrix(FILE*, int);
-    static struct node* generateMatrixBinary(FILE* input,
+    static struct node* generateMatrixBinary(std::istream& input,
                                              const struct DlxCoverHeader& header,
                                              char*** solutions_out,
                                              int* item_count_out,
@@ -90,6 +91,11 @@ private:
     static struct node* pickItem(struct node*);
     static int generateTitles(struct node*, char*);
     static void handleSpacerNodes(struct node*, int*, int, int);
+    static struct node* generateMatrixBinaryImpl(std::istream& input,
+                                                 const struct DlxCoverHeader& header,
+                                                 char*** solutions_out,
+                                                 int* item_count_out,
+                                                 int* option_count_out);
 };
 
 } // namespace dlx

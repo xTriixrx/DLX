@@ -9,10 +9,13 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <errno.h>
+#include <cstdio>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace {
 
@@ -103,10 +106,64 @@ std::vector<uint32_t> parse_row_list(const char* rows)
     return values;
 }
 
-std::vector<uint32_t> read_problem_solution(FILE* stream)
+class DescriptorStreamBuf : public std::streambuf
+{
+public:
+    explicit DescriptorStreamBuf(int fd)
+        : fd_(fd)
+    {
+        setg(buffer_, buffer_, buffer_);
+    }
+    ~DescriptorStreamBuf() override;
+
+protected:
+    int_type underflow() override
+    {
+        if (fd_ < 0)
+        {
+            return traits_type::eof();
+        }
+
+        ssize_t bytes = 0;
+        do
+        {
+            bytes = ::read(fd_, buffer_, sizeof(buffer_));
+        } while (bytes < 0 && errno == EINTR);
+
+        if (bytes <= 0)
+        {
+            return traits_type::eof();
+        }
+
+        setg(buffer_, buffer_, buffer_ + bytes);
+        return traits_type::to_int_type(*gptr());
+    }
+
+private:
+    int fd_;
+    char buffer_[4096];
+};
+
+class DescriptorInputStream : public std::istream
+{
+public:
+    explicit DescriptorInputStream(int fd)
+        : std::istream(&buffer_)
+        , buffer_(fd)
+    {}
+    ~DescriptorInputStream() override;
+
+private:
+    DescriptorStreamBuf buffer_;
+};
+
+DescriptorStreamBuf::~DescriptorStreamBuf() = default;
+DescriptorInputStream::~DescriptorInputStream() = default;
+
+std::vector<uint32_t> read_problem_solution(DescriptorInputStream& binary_stream)
 {
     struct DlxSolutionHeader header;
-    EXPECT_EQ(dlx_read_solution_header(stream, &header), 0);
+    EXPECT_EQ(dlx_read_solution_header(binary_stream, &header), 0);
     EXPECT_EQ(header.magic, DLX_SOLUTION_MAGIC);
 
     struct DlxSolutionRow row = {0};
@@ -115,7 +172,7 @@ std::vector<uint32_t> read_problem_solution(FILE* stream)
 
     while (true)
     {
-        int read_status = dlx_read_solution_row(stream, &row);
+        int read_status = dlx_read_solution_row(binary_stream, &row);
         EXPECT_EQ(read_status, 1);
         if (row.solution_id == 0 && row.entry_count == 0)
         {
@@ -148,51 +205,66 @@ void send_problem(uint16_t port, const std::vector<uint8_t>& data)
     close(fd);
 }
 
-TEST(DlxTcpServerTest, StreamsSolutionsToSingleClient)
+
+class DlxTcpServerTest : public ::testing::Test
 {
-    dlx::TcpServerConfig config{0, 0};
-    dlx::DlxTcpServer server(config);
-    if (!server.start())
+protected:
+    void SetUp() override
     {
-        GTEST_SKIP() << "Unable to bind TCP server sockets in this environment";
+        dlx::TcpServerConfig config{0, 0};
+        server_ = std::make_unique<dlx::DlxTcpServer>(config);
+        if (!server_->start())
+        {
+            GTEST_SKIP() << "Unable to bind TCP server sockets in this environment";
+        }
     }
 
+    void TearDown() override
+    {
+        if (server_ != nullptr)
+        {
+            server_->stop();
+            server_->wait();
+        }
+    }
+
+    dlx::DlxTcpServer& server()
+    {
+        return *server_;
+    }
+
+private:
+    std::unique_ptr<dlx::DlxTcpServer> server_;
+};
+
+TEST_F(DlxTcpServerTest, StreamsSolutionsToSingleClient)
+{
     auto expected = parse_row_list(kExpectedSudokuRows);
     std::promise<std::vector<uint32_t>> rows_promise;
     auto future = rows_promise.get_future();
 
     std::thread solution_thread([&]() {
-        int fd = connect_to_port(server.solution_port());
-        FILE* stream = fdopen(fd, "rb");
-        ASSERT_NE(stream, nullptr);
+        int fd = connect_to_port(server().solution_port());
+        DescriptorInputStream stream(fd);
         rows_promise.set_value(read_problem_solution(stream));
-        fclose(stream);
+        close(fd);
     });
 
     std::string ascii_cover = read_file_to_string("tests/sudoku_cover.txt");
     std::vector<uint8_t> payload = ascii_cover_to_bytes(ascii_cover);
     ASSERT_FALSE(payload.empty());
 
-    send_problem(server.request_port(), payload);
+    send_problem(server().request_port(), payload);
 
     ASSERT_EQ(future.wait_for(std::chrono::seconds(5)), std::future_status::ready);
     std::vector<uint32_t> rows = future.get();
     EXPECT_EQ(rows, expected);
 
     solution_thread.join();
-    server.stop();
-    server.wait();
 }
 
-TEST(DlxTcpServerTest, BroadcastsToMultipleClients)
+TEST_F(DlxTcpServerTest, BroadcastsToMultipleClients)
 {
-    dlx::TcpServerConfig config{0, 0};
-    dlx::DlxTcpServer server(config);
-    if (!server.start())
-    {
-        GTEST_SKIP() << "Unable to bind TCP server sockets in this environment";
-    }
-
     auto expected = parse_row_list(kExpectedSudokuRows);
 
     std::promise<std::vector<uint32_t>> promise_a;
@@ -201,25 +273,22 @@ TEST(DlxTcpServerTest, BroadcastsToMultipleClients)
     auto future_b = promise_b.get_future();
 
     std::thread client_a([&]() {
-        int fd = connect_to_port(server.solution_port());
-        FILE* stream = fdopen(fd, "rb");
-        ASSERT_NE(stream, nullptr);
+        int fd = connect_to_port(server().solution_port());
+        DescriptorInputStream stream(fd);
         promise_a.set_value(read_problem_solution(stream));
-        fclose(stream);
+        close(fd);
     });
 
     std::thread client_b([&]() {
-        int fd = connect_to_port(server.solution_port());
-        FILE* stream = fdopen(fd, "rb");
-        ASSERT_NE(stream, nullptr);
+        int fd = connect_to_port(server().solution_port());
+        DescriptorInputStream stream(fd);
         promise_b.set_value(read_problem_solution(stream));
-        fclose(stream);
+        close(fd);
     });
 
-    std::string ascii_cover = read_file_to_string("tests/sudoku_cover.txt");
-    std::vector<uint8_t> payload = ascii_cover_to_bytes(ascii_cover);
+    std::vector<uint8_t> payload = ascii_cover_to_bytes(read_file_to_string("tests/sudoku_cover.txt"));
     ASSERT_FALSE(payload.empty());
-    send_problem(server.request_port(), payload);
+    send_problem(server().request_port(), payload);
 
     ASSERT_EQ(future_a.wait_for(std::chrono::seconds(5)), std::future_status::ready);
     ASSERT_EQ(future_b.wait_for(std::chrono::seconds(5)), std::future_status::ready);
@@ -228,41 +297,30 @@ TEST(DlxTcpServerTest, BroadcastsToMultipleClients)
 
     client_a.join();
     client_b.join();
-    server.stop();
-    server.wait();
 }
 
-TEST(DlxTcpServerTest, ReusesSolutionSocketAcrossProblems)
+TEST_F(DlxTcpServerTest, ReusesSolutionSocketAcrossProblems)
 {
-    dlx::TcpServerConfig config{0, 0};
-    dlx::DlxTcpServer server(config);
-    if (!server.start())
-    {
-        GTEST_SKIP() << "Unable to bind TCP server sockets in this environment";
-    }
-
     auto expected = parse_row_list(kExpectedSudokuRows);
     std::promise<std::vector<std::vector<uint32_t>>> promise;
     auto future = promise.get_future();
 
     std::thread solution_thread([&]() {
-        int fd = connect_to_port(server.solution_port());
-        FILE* stream = fdopen(fd, "rb");
-        ASSERT_NE(stream, nullptr);
+        int fd = connect_to_port(server().solution_port());
+        DescriptorInputStream stream(fd);
 
         std::vector<std::vector<uint32_t>> results;
         results.push_back(read_problem_solution(stream));
         results.push_back(read_problem_solution(stream));
-        fclose(stream);
+        close(fd);
         promise.set_value(results);
     });
 
-    std::string ascii_cover = read_file_to_string("tests/sudoku_cover.txt");
-    std::vector<uint8_t> payload = ascii_cover_to_bytes(ascii_cover);
+    std::vector<uint8_t> payload = ascii_cover_to_bytes(read_file_to_string("tests/sudoku_cover.txt"));
     ASSERT_FALSE(payload.empty());
 
-    send_problem(server.request_port(), payload);
-    send_problem(server.request_port(), payload);
+    send_problem(server().request_port(), payload);
+    send_problem(server().request_port(), payload);
 
     ASSERT_EQ(future.wait_for(std::chrono::seconds(5)), std::future_status::ready);
     const auto& results = future.get();
@@ -271,19 +329,10 @@ TEST(DlxTcpServerTest, ReusesSolutionSocketAcrossProblems)
     EXPECT_EQ(results[1], expected);
 
     solution_thread.join();
-    server.stop();
-    server.wait();
 }
 
-TEST(DlxTcpServerTest, MultipleProblemClientsBroadcastToSolutionSubscribers)
+TEST_F(DlxTcpServerTest, MultipleProblemClientsBroadcastToSolutionSubscribers)
 {
-    dlx::TcpServerConfig config{0, 0};
-    dlx::DlxTcpServer server(config);
-    if (!server.start())
-    {
-        GTEST_SKIP() << "Unable to bind TCP server sockets in this environment";
-    }
-
     auto expected = parse_row_list(kExpectedSudokuRows);
 
     std::promise<std::vector<std::vector<uint32_t>>> promise_a;
@@ -292,43 +341,39 @@ TEST(DlxTcpServerTest, MultipleProblemClientsBroadcastToSolutionSubscribers)
     auto future_b = promise_b.get_future();
 
     auto solution_client = [&](std::promise<std::vector<std::vector<uint32_t>>>& prom) {
-        int fd = connect_to_port(server.solution_port());
-        FILE* stream = fdopen(fd, "rb");
-        ASSERT_NE(stream, nullptr);
+        int fd = connect_to_port(server().solution_port());
+        DescriptorInputStream stream(fd);
 
         std::vector<std::vector<uint32_t>> results;
         results.push_back(read_problem_solution(stream));
         results.push_back(read_problem_solution(stream));
-        fclose(stream);
+        close(fd);
         prom.set_value(results);
     };
 
     std::thread client_a(solution_client, std::ref(promise_a));
     std::thread client_b(solution_client, std::ref(promise_b));
 
-    std::string ascii_cover = read_file_to_string("tests/sudoku_cover.txt");
-    std::vector<uint8_t> payload = ascii_cover_to_bytes(ascii_cover);
+    std::vector<uint8_t> payload = ascii_cover_to_bytes(read_file_to_string("tests/sudoku_cover.txt"));
     ASSERT_FALSE(payload.empty());
 
-    std::thread problem_a([&]() { send_problem(server.request_port(), payload); });
-    std::thread problem_b([&]() { send_problem(server.request_port(), payload); });
-
-    problem_a.join();
-    problem_b.join();
+    send_problem(server().request_port(), payload);
+    send_problem(server().request_port(), payload);
 
     ASSERT_EQ(future_a.wait_for(std::chrono::seconds(5)), std::future_status::ready);
     ASSERT_EQ(future_b.wait_for(std::chrono::seconds(5)), std::future_status::ready);
-    for (const auto& results : {future_a.get(), future_b.get()})
-    {
-        ASSERT_EQ(results.size(), 2u);
-        EXPECT_EQ(results[0], expected);
-        EXPECT_EQ(results[1], expected);
-    }
+
+    auto results_a = future_a.get();
+    auto results_b = future_b.get();
+    ASSERT_EQ(results_a.size(), 2u);
+    ASSERT_EQ(results_b.size(), 2u);
+    EXPECT_EQ(results_a[0], expected);
+    EXPECT_EQ(results_a[1], expected);
+    EXPECT_EQ(results_b[0], expected);
+    EXPECT_EQ(results_b[1], expected);
 
     client_a.join();
     client_b.join();
-    server.stop();
-    server.wait();
 }
 
 } // namespace

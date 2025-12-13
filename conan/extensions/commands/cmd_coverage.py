@@ -161,23 +161,21 @@ def _generate_combined_html(lcov_path, output_dir, source_root, output):
         output.warning("genhtml not found; skipping HTML generation.")
         return None
 
-    _run_command(
-        [
-            genhtml,
-            lcov_path,
-            "--output-directory",
-            output_dir,
-            "--title",
-            "DLX Coverage Report",
-            "--prefix",
-            source_root,
-            "--legend",
-            "--ignore-errors",
-            "format",
-            "--ignore-errors",
-            "unsupported",
-            "--ignore-errors",
-            "category",
-        ]
-    )
+    genhtml_cmd = [
+        genhtml,
+        lcov_path,
+        "--output-directory",
+        output_dir,
+        "--title",
+        "DLX Coverage Report",
+        "--prefix",
+        source_root,
+        "--legend",
+    ]
+
+    ignore_error_categories = ["format", "unsupported", "category", "inconsistent", "corrupt"]
+    for category in ignore_error_categories:
+        genhtml_cmd.extend(["--ignore-errors", category])
+
+    _run_command(genhtml_cmd)
     return os.path.join(output_dir, "index.html")

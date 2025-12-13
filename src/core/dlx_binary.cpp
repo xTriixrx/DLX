@@ -4,6 +4,10 @@
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
+#include <istream>
+
+static int ensure_chunk_capacity(struct DlxRowChunk* chunk, uint16_t required);
+static int ensure_solution_capacity(struct DlxSolutionRow* row, uint16_t required);
 
 static uint16_t dlx_htons(uint16_t value)
 {
@@ -25,6 +29,33 @@ static uint32_t dlx_ntohl(uint32_t value)
     return ntohl(value);
 }
 
+namespace
+{
+
+class StreamBinaryReader
+{
+public:
+    explicit StreamBinaryReader(std::istream& stream)
+        : stream_(stream)
+    {}
+
+    bool read_exact(void* buffer, size_t bytes)
+    {
+        stream_.read(static_cast<char*>(buffer), static_cast<std::streamsize>(bytes));
+        return static_cast<size_t>(stream_.gcount()) == bytes;
+    }
+
+    bool eof() const
+    {
+        return stream_.eof();
+    }
+
+private:
+    std::istream& stream_;
+};
+
+} // namespace
+
 int dlx_write_cover_header(FILE* output, const struct DlxCoverHeader* header)
 {
     if (output == NULL || header == NULL)
@@ -43,16 +74,16 @@ int dlx_write_cover_header(FILE* output, const struct DlxCoverHeader* header)
     return written == 1 ? 0 : -1;
 }
 
-int dlx_read_cover_header(FILE* input, struct DlxCoverHeader* header)
+int dlx_read_cover_header(std::istream& input, struct DlxCoverHeader* header)
 {
-    if (input == NULL || header == NULL)
+    if (header == NULL)
     {
         return -1;
     }
 
+    StreamBinaryReader reader(input);
     struct DlxCoverHeader readable;
-    size_t read = fread(&readable, sizeof(readable), 1, input);
-    if (read != 1)
+    if (!reader.read_exact(&readable, sizeof(readable)))
     {
         return -1;
     }
@@ -127,19 +158,19 @@ static int ensure_chunk_capacity(struct DlxRowChunk* chunk, uint16_t required)
     return 0;
 }
 
-int dlx_read_row_chunk(FILE* input, struct DlxRowChunk* chunk)
+int dlx_read_row_chunk(std::istream& input, struct DlxRowChunk* chunk)
 {
-    if (input == NULL || chunk == NULL)
+    if (chunk == NULL)
     {
         return -1;
     }
 
-    uint32_t row_id_net;
-    size_t read = fread(&row_id_net, sizeof(row_id_net), 1, input);
+    StreamBinaryReader reader(input);
 
-    if (read != 1)
+    uint32_t row_id_net;
+    if (!reader.read_exact(&row_id_net, sizeof(row_id_net)))
     {
-        if (feof(input))
+        if (reader.eof())
         {
             return 0; // No more rows.
         }
@@ -147,7 +178,7 @@ int dlx_read_row_chunk(FILE* input, struct DlxRowChunk* chunk)
     }
 
     uint16_t entry_count_net;
-    if (fread(&entry_count_net, sizeof(entry_count_net), 1, input) != 1)
+    if (!reader.read_exact(&entry_count_net, sizeof(entry_count_net)))
     {
         return -1;
     }
@@ -161,7 +192,7 @@ int dlx_read_row_chunk(FILE* input, struct DlxRowChunk* chunk)
     for (uint16_t i = 0; i < entry_count; i++)
     {
         uint32_t column_net;
-        if (fread(&column_net, sizeof(column_net), 1, input) != 1)
+        if (!reader.read_exact(&column_net, sizeof(column_net)))
         {
             return -1;
         }
@@ -203,16 +234,16 @@ int dlx_write_solution_header(FILE* output, const struct DlxSolutionHeader* head
     return written == 1 ? 0 : -1;
 }
 
-int dlx_read_solution_header(FILE* input, struct DlxSolutionHeader* header)
+int dlx_read_solution_header(std::istream& input, struct DlxSolutionHeader* header)
 {
-    if (input == NULL || header == NULL)
+    if (header == NULL)
     {
         return -1;
     }
 
+    StreamBinaryReader reader(input);
     struct DlxSolutionHeader readable;
-    size_t read = fread(&readable, sizeof(readable), 1, input);
-    if (read != 1)
+    if (!reader.read_exact(&readable, sizeof(readable)))
     {
         return -1;
     }
@@ -290,29 +321,29 @@ static int ensure_solution_capacity(struct DlxSolutionRow* row, uint16_t require
     return 0;
 }
 
-int dlx_read_solution_row(FILE* input, struct DlxSolutionRow* row)
+int dlx_read_solution_row(std::istream& input, struct DlxSolutionRow* row)
 {
-    if (input == NULL || row == NULL)
+    if (row == NULL)
     {
         return -1;
     }
+
+    StreamBinaryReader reader(input);
 
     uint32_t solution_id_net;
     uint16_t count_net;
 
-    size_t read = fread(&solution_id_net, sizeof(solution_id_net), 1, input);
-    if (read != 1)
+    if (!reader.read_exact(&solution_id_net, sizeof(solution_id_net)))
     {
-        if (feof(input))
+        if (reader.eof())
         {
             row->entry_count = 0;
             return 0;
         }
-
         return -1;
     }
 
-    if (fread(&count_net, sizeof(count_net), 1, input) != 1)
+    if (!reader.read_exact(&count_net, sizeof(count_net)))
     {
         return -1;
     }
@@ -326,7 +357,7 @@ int dlx_read_solution_row(FILE* input, struct DlxSolutionRow* row)
     for (uint16_t i = 0; i < count; i++)
     {
         uint32_t value_net;
-        if (fread(&value_net, sizeof(value_net), 1, input) != 1)
+        if (!reader.read_exact(&value_net, sizeof(value_net)))
         {
             return -1;
         }
@@ -353,12 +384,12 @@ void dlx_free_solution_row(struct DlxSolutionRow* row)
 }
 
 
-struct node* dlx_read_binary(FILE* input,
+struct node* dlx_read_binary(std::istream& input,
                              char*** solutions_out,
                              int* item_count_out,
                              int* option_count_out)
 {
-    if (input == NULL || solutions_out == NULL || item_count_out == NULL || option_count_out == NULL)
+    if (solutions_out == NULL || item_count_out == NULL || option_count_out == NULL)
     {
         return NULL;
     }

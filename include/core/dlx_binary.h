@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <istream>
 #include "core/dlx.h"
 
 /** @brief Magic constant that prefixes serialized cover headers (ASCII 'DLXB'). */
@@ -60,19 +61,19 @@ struct DlxSolutionRow
 };
 
 int dlx_write_cover_header(FILE* output, const struct DlxCoverHeader* header);
-int dlx_read_cover_header(FILE* input, struct DlxCoverHeader* header);
+int dlx_read_cover_header(std::istream& input, struct DlxCoverHeader* header);
 int dlx_write_row_chunk(FILE* output, uint32_t row_id, const uint32_t* columns, uint16_t column_count);
-int dlx_read_row_chunk(FILE* input, struct DlxRowChunk* chunk);
+int dlx_read_row_chunk(std::istream& input, struct DlxRowChunk* chunk);
 void dlx_free_row_chunk(struct DlxRowChunk* chunk);
 int dlx_write_solution_header(FILE* output, const struct DlxSolutionHeader* header);
-int dlx_read_solution_header(FILE* input, struct DlxSolutionHeader* header);
+int dlx_read_solution_header(std::istream& input, struct DlxSolutionHeader* header);
 int dlx_write_solution_row(FILE* output,
                            uint32_t solution_id,
                            const uint32_t* row_indices,
                            uint16_t row_count);
-int dlx_read_solution_row(FILE* input, struct DlxSolutionRow* row);
+int dlx_read_solution_row(std::istream& input, struct DlxSolutionRow* row);
 void dlx_free_solution_row(struct DlxSolutionRow* row);
-struct node* dlx_read_binary(FILE* input,
+struct node* dlx_read_binary(std::istream& input,
                              char*** solutions_out,
                              int* item_count_out,
                              int* option_count_out);
