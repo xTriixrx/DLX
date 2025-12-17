@@ -1,4 +1,5 @@
 #include "core/dlx.h"
+#include "core/text.h"
 #include <cstdio>
 #include <cstdlib>
 #include <gtest/gtest.h>
@@ -12,14 +13,12 @@ TEST(MatrixDumpTest, GeneratesDeterministicLayout)
     FILE* cover = fopen("tests/test.txt", "r");
     ASSERT_NE(cover, nullptr);
 
-    int itemCount = dlx::Core::getItemCount(cover);
-    int nodeCount = itemCount + dlx::Core::getNodeCount(cover);
+    int itemCount = dlx::text::getItemCount(cover);
+    int nodeCount = itemCount + dlx::text::getNodeCount(cover);
     fseek(cover, 0L, SEEK_SET);
 
     std::ostringstream dump;
-    dlx::Core::setMatrixDumpStream(&dump);
-    struct node* matrix = dlx::Core::generateMatrix(cover, nodeCount);
-    dlx::Core::setMatrixDumpStream(nullptr);
+    struct node* matrix = dlx::text::generateMatrix(cover, nodeCount, &dump);
     fclose(cover);
     ASSERT_NE(matrix, nullptr);
 

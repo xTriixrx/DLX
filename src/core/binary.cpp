@@ -1,4 +1,4 @@
-#include "core/dlx_binary.h"
+#include "core/binary.h"
 #include "core/dlx.h"
 #include <arpa/inet.h>
 #include <climits>

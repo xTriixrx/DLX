@@ -1,5 +1,5 @@
 #include "sudoku/encoder/sudoku_encoder.h"
-#include "core/dlx_binary.h"
+#include "core/binary.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>

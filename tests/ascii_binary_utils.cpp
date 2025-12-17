@@ -1,5 +1,5 @@
 #include "ascii_binary_utils.h"
-#include "core/dlx_binary.h"
+#include "core/binary.h"
 #include <algorithm>
 #include <climits>
 #include <cstdio>

@@ -1,4 +1,4 @@
-#include "core/dlx_binary.h"
+#include "core/binary.h"
 #include "sudoku/decoder/sudoku_decoder.h"
 #include "sudoku/encoder/sudoku_encoder.h"
 #include <gtest/gtest.h>

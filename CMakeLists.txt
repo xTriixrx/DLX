@@ -24,10 +24,11 @@ find_package(Python3 COMPONENTS Interpreter)
 option(ENABLE_SCHEDULER_RS "Build the scheduler-rs workspace with Cargo" ON)
 
 add_library(dlx_binary STATIC
-    src/core/dlx_binary.cpp
-    src/core/dlx_server.cpp
-    src/core/dlx_tcp_server.cpp
-    src/core/dlx_core.cpp
+    src/core/binary.cpp
+    src/core/tcp_server.cpp
+    src/core/core.cpp
+    src/core/text.cpp
+    src/core/matrix.cpp
     src/core/solution_sink.cpp
 )
 target_include_directories(dlx_binary PUBLIC include)

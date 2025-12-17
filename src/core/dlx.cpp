@@ -1,6 +1,7 @@
 #include "core/dlx.h"
-#include "core/dlx_binary.h"
-#include "core/dlx_tcp_server.h"
+#include "core/binary.h"
+#include "core/tcp_server.h"
+#include "core/util.h"
 #include "core/solution_sink.h"
 #include <filesystem>
 #include <fstream>
@@ -80,123 +81,159 @@ int instantiate_server(char** argv)
     return EXIT_SUCCESS;
 }
 
+static bool open_cover_stream(const char* cover_path, CoverStream& cover_stream)
+{
+    // If cover path is defined as a pipe, set the cover_stream structs
+    // stream pointer to a reference of stdin
+    if (strcmp(cover_path, "-") == 0)
+    {
+        cover_stream.stream = &std::cin;
+        return true;
+    }
+
+    // Otherwise, create an ifstream and move the reference to be owned by the cover_stream_owner
+    auto file_stream = std::make_unique<std::ifstream>(cover_path, std::ios::binary);
+    
+    // If cover file is unable to be opened, abort
+    if (!file_stream->is_open())
+    {
+        printf("Unable to open cover file %s.\n", cover_path);
+        return false;
+    }
+
+    // Retrieve and set cover_stream structs stream pointer to be owned by unique_ptr
+    cover_stream.stream = file_stream.get();
+    cover_stream.owner = std::move(file_stream);
+    return true;
+}
+
+static bool build_matrix_context(std::istream& cover_stream, const char* cover_path, MatrixContext& ctx)
+{
+    struct DlxCoverHeader header;
+    
+    //
+    ctx.reset();
+
+    //
+    if (dlx_read_cover_header(cover_stream, &header) != 0)
+    {
+        printf("Failed to read binary cover header from %s.\n", cover_path);
+        return false;
+    }
+
+    //
+    ctx.matrix = dlx::Core::generateMatrixBinary(cover_stream,
+                                                 header,
+                                                 &ctx.solutions,
+                                                 &ctx.item_count,
+                                                 &ctx.option_count);
+    
+    //
+    if (ctx.matrix == NULL)
+    {
+        printf("Failed to parse binary cover file %s.\n", cover_path);
+        return false;
+    }
+
+    return true;
+}
+
+static bool allocate_solution_buffer(int option_count, SolutionBuffer& buffer)
+{
+    buffer.reset();
+    buffer.rows = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * option_count));
+    if (buffer.rows == NULL)
+    {
+        printf("Unable to allocate solution buffer.\n");
+        return false;
+    }
+
+    buffer.option_count = option_count;
+    return true;
+}
+
+static bool setup_output_context(const char* solution_path, int item_count, OutputContext& ctx)
+{
+    ctx.reset();
+    ctx.write_to_stdout = (strcmp(solution_path, "-") == 0);
+    ctx.file = ctx.write_to_stdout ? stdout : fopen(solution_path, "wb");
+    if (ctx.file == NULL)
+    {
+        printf("Unable to create output file %s.\n", solution_path);
+        return false;
+    }
+
+    ctx.stdout_suppressed = ctx.write_to_stdout;
+    if (ctx.stdout_suppressed)
+    {
+        dlx::Core::dlx_set_stdout_suppressed(true);
+    }
+
+    if (!ctx.stdout_suppressed)
+    {
+        ctx.console_sink = std::make_unique<dlx::OstreamSolutionSink>(std::cout);
+        ctx.sink_router.add_sink(ctx.console_sink.get());
+    }
+    ctx.output.sink = ctx.sink_router.empty() ? nullptr : &ctx.sink_router;
+
+    if (dlx::Core::dlx_enable_binary_solution_output(ctx.output,
+                                                     ctx.file,
+                                                     static_cast<uint32_t>(item_count)) != 0)
+    {
+        printf("Failed to enable binary solution output.\n");
+        ctx.reset();
+        return false;
+    }
+
+    ctx.binary_output_enabled = true;
+    return true;
+}
+
 /**
  * @param const char* The path to a binary cover file to read in DLXB format or a piped input stream
  * @param const char* The path to write a binary solution file in DLXS format or a piped output stream
  */
 int handle_cli(const char* cover_path, const char* solution_path)
 {
-    int itemCount = 0;
-    int optionCount = 0;
-    char** solutions = NULL;
-    struct node* matrix = NULL;
-    std::istream* cover_stream = nullptr;
-    std::unique_ptr<std::istream> cover_stream_owner;
-
-    // If cover path is defined as a pipe, set the cover_stream pointer to a reference of stdin
-    if (strcmp(cover_path, "-") == 0)
+    CoverStream cover_stream;
+    MatrixContext matrix_ctx;
+    OutputContext output_ctx;
+    SolutionBuffer solution_buffer;
+    
+    //
+    if (!open_cover_stream(cover_path, cover_stream))
     {
-        cover_stream = &std::cin;
-    }
-    else // Otherwise, create an ifstream and move the reference to be owned by the cover_stream_owner
-    {
-        auto file_stream = std::make_unique<std::ifstream>(cover_path, std::ios::binary);
-        
-        // If cover file is unable to be opened, abort
-        if (!file_stream->is_open())
-        {
-            printf("Unable to open cover file %s.\n", cover_path);
-            return EXIT_FAILURE;
-        }
-
-        // Retrieve and cover_stream pointer to be owned by unique_ptr
-        cover_stream = file_stream.get();
-        cover_stream_owner = std::move(file_stream);
-    }
-
-    struct DlxCoverHeader header;
-    if (dlx_read_cover_header(*cover_stream, &header) != 0)
-    {
-        printf("Failed to read binary cover header from %s.\n", cover_path);
         return EXIT_FAILURE;
     }
 
-    matrix = dlx::Core::generateMatrixBinary(*cover_stream,
-                                             header,
-                                             &solutions,
-                                             &itemCount,
-                                             &optionCount);
-    if (matrix == NULL)
+    //
+    if (!build_matrix_context(*cover_stream.stream, cover_path, matrix_ctx))
     {
-        printf("Failed to parse binary cover file %s.\n", cover_path);
         return EXIT_FAILURE;
     }
 
-    uint32_t* solution_row_ids = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * optionCount));
-    if (solution_row_ids == NULL)
+    //
+    if (!allocate_solution_buffer(matrix_ctx.option_count, solution_buffer))
     {
-        printf("Unable to allocate solution buffer.\n");
-        dlx::Core::freeMemory(matrix, solutions);
         return EXIT_FAILURE;
     }
 
-    const bool write_to_stdout = (strcmp(solution_path, "-") == 0);
-    FILE* binary_output = write_to_stdout ? stdout : fopen(solution_path, "wb");
-    if (binary_output == NULL)
+    //
+    if (!setup_output_context(solution_path, matrix_ctx.item_count, output_ctx))
     {
-        printf("Unable to create output file %s.\n", solution_path);
-        dlx::Core::freeMemory(matrix, solutions);
-        free(solution_row_ids);
         return EXIT_FAILURE;
     }
 
-    const bool suppress_stdout = write_to_stdout;
-    if (suppress_stdout)
-    {
-        dlx::Core::dlx_set_stdout_suppressed(true);
-    }
+    //
+    dlx::Core::search(matrix_ctx.matrix,
+                      0,
+                      matrix_ctx.solutions,
+                      solution_buffer.rows,
+                      output_ctx.output);
+    
+    //
+    output_ctx.disable_binary_output();
 
-    std::unique_ptr<dlx::OstreamSolutionSink> console_sink;
-    dlx::CompositeSolutionSink sink_router;
-    dlx::SolutionOutput output_ctx;
-
-    if (!suppress_stdout)
-    {
-        console_sink = std::make_unique<dlx::OstreamSolutionSink>(std::cout);
-        sink_router.add_sink(console_sink.get());
-    }
-    output_ctx.sink = sink_router.empty() ? nullptr : &sink_router;
-
-    if (dlx::Core::dlx_enable_binary_solution_output(output_ctx, binary_output, static_cast<uint32_t>(itemCount)) != 0)
-    {
-        if (!write_to_stdout)
-        {
-            fclose(binary_output);
-        }
-        dlx::Core::freeMemory(matrix, solutions);
-        free(solution_row_ids);
-        return EXIT_FAILURE;
-    }
-
-    dlx::Core::search(matrix, 0, solutions, solution_row_ids, output_ctx);
-    dlx::Core::dlx_disable_binary_solution_output(output_ctx);
-
-    if (suppress_stdout)
-    {
-        dlx::Core::dlx_set_stdout_suppressed(false);
-    }
-
-    if (!write_to_stdout)
-    {
-        fclose(binary_output);
-    }
-    else
-    {
-        fflush(binary_output);
-    }
-
-    free(solution_row_ids);
-    dlx::Core::freeMemory(matrix, solutions);
     return EXIT_SUCCESS;
 }
 

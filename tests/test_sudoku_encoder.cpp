@@ -1,5 +1,5 @@
 #include "sudoku/encoder/sudoku_encoder.h"
-#include "core/dlx_binary.h"
+#include "core/binary.h"
 #include <gtest/gtest.h>
 #include <string.h>
 #include <unistd.h>

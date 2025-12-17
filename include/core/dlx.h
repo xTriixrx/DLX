@@ -1,11 +1,11 @@
 #ifndef DLX_H
 #define DLX_H
 
-#include <stdint.h>
+#include <vector>
 #include <stdio.h>
 #include <istream>
 #include <ostream>
-#include <vector>
+#include <stdint.h>
 #include "core/solution_sink.h"
 
 struct DlxCoverHeader;
@@ -26,7 +26,7 @@ struct DlxCoverHeader;
  * a column header in @ref generateHeadNode. Column headers maintain the current column
  * length through @ref len while @ref data stores metadata such as row index or column id.
  */
-struct node 
+struct node
 {
     int len;              /**< Number of nodes currently linked beneath this column header. */
     int data;             /**< Column or row identifier associated with this node. */
@@ -64,10 +64,6 @@ struct SolutionOutput
 class Core
 {
 public:
-    static int getNodeCount(FILE*);
-    static int getItemCount(FILE*);
-    static int getOptionsCount(FILE*);
-    static struct node* generateMatrix(FILE*, int);
     static struct node* generateMatrixBinary(std::istream& input,
                                              const struct DlxCoverHeader& header,
                                              char*** solutions_out,
@@ -85,12 +81,8 @@ private:
     static void cover(struct node*);
     static void unhide(struct node*);
     static void uncover(struct node*);
-    static int getOptionNodesCount(FILE*);
     static void printSolutions(char**, const uint32_t*, int, SolutionOutput&);
-    static struct node* generateHeadNode(int);
     static struct node* pickItem(struct node*);
-    static int generateTitles(struct node*, char*);
-    static void handleSpacerNodes(struct node*, int*, int, int);
     static struct node* generateMatrixBinaryImpl(std::istream& input,
                                                  const struct DlxCoverHeader& header,
                                                  char*** solutions_out,

@@ -1,6 +1,8 @@
 #include "core/dlx.h"
-#include "core/dlx_binary.h"
+#include "core/binary.h"
 #include "core/solution_sink.h"
+#include "core/text.h"
+#include "core/matrix.h"
 #include <stdio.h>
 #include <iostream>
 #include <wchar.h>
@@ -14,58 +16,6 @@
 #include <sys/stat.h>
 
 namespace {
-
-constexpr char STR_ONE[] = "1";
-constexpr char STR_ZERO[] = "0";
-constexpr char SPACE_DELIMITER[] = " ";
-
-} // namespace
-
-namespace {
-
-int matrix_index(const struct node* base, const struct node* ptr)
-{
-    if (ptr == nullptr)
-    {
-        return -1;
-    }
-    return static_cast<int>(ptr - base);
-}
-
-void dumpMatrixStructure(const struct node* matrix,
-                         int total_nodes,
-                         int itemCount,
-                         std::ostream& output)
-{
-    output << "MATRIX item_count=" << itemCount << " total_nodes=" << total_nodes << "\n";
-    for (int i = 0; i <= total_nodes; ++i)
-    {
-        const struct node& node = matrix[i];
-        const char* type = "NODE";
-        if (i == 0)
-        {
-            type = "HEAD";
-        }
-        else if (i <= itemCount)
-        {
-            type = "COLUMN";
-        }
-        else if (node.top == matrix)
-        {
-            type = "SPACER";
-        }
-
-        output << type << " index=" << i
-               << " data=" << node.data
-               << " len=" << node.len
-               << " top=" << matrix_index(matrix, node.top)
-               << " left=" << matrix_index(matrix, node.left)
-               << " right=" << matrix_index(matrix, node.right)
-               << " up=" << matrix_index(matrix, node.up)
-               << " down=" << matrix_index(matrix, node.down);
-        output << "\n";
-    }
-}
 
 void initialize_column_headers(struct node* matrix, uint32_t column_count)
 {
@@ -464,122 +414,6 @@ struct node* Core::pickItem(struct node* head)
     return i;
 }
 
-/**
- * The generation function is used for creating the internal memory mapping of the matrix structure to be used for 
- * the dlx search algorithm. This function generates all nodes including the item column nodes, spacer nodes, and the
- * actual option nodes that need to be placed throughout the structure. Through each iteration, the appropriate links
- * are updated as the file is being read.
- * 
- * @param FILE* A file pointer to a file which contains a cover definition.
- * @param int An integer representing the total number of nodes that need to be created.
- * @return struct node* Returns the address of the malloc'd matrix structure.
- */ 
-struct node* Core::generateMatrix(FILE* cover, int nodeCount)
-{
-    ssize_t read;
-    size_t len = 0;
-    char* newlinePtr;
-    int lineCount = 1;
-    char* buffer = NULL;
-    int prevRowCount = 0;
-    int currNodeCount = 0;
-    int spaceNodeCount = 0;
-
-    // Malloc matrix and populate head node to begin insertion
-    struct node* matrix = generateHeadNode(nodeCount);
-
-    // Read first line of cover file and generate column headers
-    read = getline(&buffer, &len, cover);
-    currNodeCount = generateTitles(matrix, buffer);
-    const int itemCount = currNodeCount;
-
-    // Read line by line of entire cover file
-    while ((read = getline(&buffer, &len, cover)) != -1)
-    {
-        // Create/update spacer nodes prior to dealing with next option
-        handleSpacerNodes(matrix, &spaceNodeCount, currNodeCount, prevRowCount);
-
-        currNodeCount++;
-        prevRowCount = 0;
-        int assocItemCount = 1;
-        char* optionToken = strtok(buffer, SPACE_DELIMITER);
-        
-        // Iterate through option row and create nodes where appropriate
-        while (optionToken != NULL)
-        {
-            // If newline character exists in optionToken, remove the character
-            if ((newlinePtr = strstr(optionToken, "\n")) != NULL)
-            {
-                strncpy(newlinePtr, "\0", 1);
-            }
-
-            // If "0", move to next item; no need to create empty nodes.
-            if (strcmp(optionToken, STR_ZERO) == 0)
-            {
-                assocItemCount++;
-                optionToken = strtok(NULL, SPACE_DELIMITER);
-                continue;
-            }
-            // If "1", create node for associated item
-            else if (strcmp(optionToken, STR_ONE) == 0)
-            {
-                matrix[currNodeCount + 1].data = currNodeCount + 1;
-
-                // Retrieve associated item node
-                struct node* item = &matrix[assocItemCount];
-                struct node* last = &matrix[assocItemCount];
-                
-                // Move last ptr to last item in item's column
-                while (last->down != item)
-                {
-                    last = last->down;
-                }
-
-                // Update item and last ptr's to point to new node
-                item->len += 1;
-                item->up = &matrix[currNodeCount + 1];
-                last->down = &matrix[currNodeCount + 1];
-                
-                // Set new nodes' ptr's
-                matrix[currNodeCount + 1].up = last;
-                matrix[currNodeCount + 1].top = item;
-                matrix[currNodeCount + 1].down = item;
-                
-                // Increment counters
-                prevRowCount++;
-                currNodeCount++;
-                assocItemCount++;
-            }
-            else
-            {
-                printf("Invalid token found in complete cover mapping: %s, aborting.", optionToken);
-                exit(1);
-            }
-
-            optionToken = strtok(NULL, SPACE_DELIMITER);
-        }
-
-        lineCount++;
-    }
-
-    // Lastly, populate final spacer node prior to finishing matrix generation and update last - 1 spacer.
-    matrix[currNodeCount + 1].top = matrix;
-    matrix[currNodeCount + 1].data = spaceNodeCount--;
-
-    matrix[currNodeCount + 1].down = matrix;
-    matrix[currNodeCount - prevRowCount].down = &matrix[currNodeCount];
-    matrix[currNodeCount + 1].up = &matrix[(currNodeCount + 1) - prevRowCount];
-
-    free(buffer);
-
-    if (g_matrix_dump_stream != nullptr)
-    {
-        dumpMatrixStructure(matrix, nodeCount, itemCount, *g_matrix_dump_stream);
-    }
-
-    return matrix;
-}
-
 struct node* Core::generateMatrixBinaryImpl(std::istream& input,
                                             const struct DlxCoverHeader& header,
                                             char*** solutions_out,
@@ -673,7 +507,7 @@ struct node* Core::generateMatrixBinaryImpl(std::istream& input,
     }
 
     int nodeCount = static_cast<int>(total_nodes);
-    struct node* matrix = generateHeadNode(nodeCount);
+    struct node* matrix = matrix::generateHeadNode(nodeCount);
     if (matrix == nullptr)
     {
         free(solutions);
@@ -690,7 +524,7 @@ struct node* Core::generateMatrixBinaryImpl(std::istream& input,
 
     for (size_t row_index = 0; row_index < rows.size(); ++row_index)
     {
-        handleSpacerNodes(matrix, &spaceNodeCount, currNodeCount, prevRowCount);
+        matrix::handleSpacerNodes(matrix, &spaceNodeCount, currNodeCount, prevRowCount);
         if (has_pending_row)
         {
             matrix[currNodeCount + 1].data = -pending_row_id;
@@ -767,7 +601,7 @@ struct node* Core::generateMatrixBinaryImpl(std::istream& input,
 
     if (g_matrix_dump_stream != nullptr)
     {
-        dumpMatrixStructure(matrix, nodeCount, itemCount, *g_matrix_dump_stream);
+        matrix::dumpMatrixStructure(matrix, nodeCount, itemCount, *g_matrix_dump_stream);
     }
 
     *solutions_out = solutions;
@@ -783,98 +617,6 @@ struct node* Core::generateMatrixBinary(std::istream& input,
                                         int* option_count_out)
 {
     return generateMatrixBinaryImpl(input, header, solutions_out, item_count_out, option_count_out);
-}
-
-/**
- * A utility function to assist in the generation of the matrix structure and appropriate links, this function
- * is dedicated to the construction of the item nodes (column headers) by reading tokens from the titleLine.
- * 
- * @param struct node* A node pointer to the head of the matrix.
- * @param char* A char pointer to the item line which is the first line in the cover file.
- * @return int Returns the current node count of how many item nodes were created from this method.
- */ 
-int Core::generateTitles(struct node* matrix, char* titleLine)
-{
-    char* newlinePtr;
-    int currNodeCount = 0;
-
-    char* itemTitle = strtok(titleLine, SPACE_DELIMITER);
-
-    // While delimited substring is not null and current item count is less than
-    // the desired item length, continue processing item columns
-    while (itemTitle != NULL)
-    {
-        // If newline character exists in title string, remove the character
-        if ((newlinePtr = strstr(itemTitle, "\n")) != NULL)
-        {
-            strncpy(newlinePtr, "\0", 1);
-        }
-
-        // Populate item node
-        matrix[currNodeCount + 1].len = 0;
-        matrix[currNodeCount + 1].top = matrix;
-        matrix[currNodeCount + 1].left = &matrix[currNodeCount];
-        matrix[currNodeCount + 1].right = matrix;
-        matrix[currNodeCount + 1].up = &matrix[currNodeCount + 1];
-        matrix[currNodeCount + 1].down = &matrix[currNodeCount + 1];
-        matrix[currNodeCount + 1].data = currNodeCount + 1;
-
-        // Adjust previous right pointer and heads left pointer to new element.
-        matrix[currNodeCount].right = &matrix[currNodeCount + 1];
-        matrix[0].left = &matrix[currNodeCount + 1];
-
-        itemTitle = strtok(NULL, SPACE_DELIMITER);
-        currNodeCount++;
-    }
-
-    return currNodeCount;
-}
-
-/**
- * A utility function to assist in the generation of the matrix structure and appropriate links, this function
- * is dedicated to all spacer nodes except the last one. This function will update the pointers to the current
- * and previous spacer nodes up until the last spacer node.
- * 
- * @param struct node* A node pointer to the head of the matrix.
- * @param int* A pointer to the current space node counter.
- * @param int A copy of the current node count in the generation process.
- * @param int A copy of the previous option's node count in the generation process.
- */ 
-void Core::handleSpacerNodes(struct node* matrix, int* spaceNodeCount, int currNodeCount, int prevRowCount)
-{
-    // Top of spacer nodes should always point to matrix[0], data represents row number.
-    matrix[currNodeCount + 1].top = matrix;
-    matrix[currNodeCount + 1].data = (*spaceNodeCount)--;
-    
-    // If prevRowCount is 0, means starting first line of nodes
-    if (prevRowCount == 0)
-    {
-        matrix[currNodeCount + 1].up = matrix;
-    }
-    else // Need to update previous spacers' down and current spacers' up
-    {
-        matrix[currNodeCount - prevRowCount].down = &matrix[currNodeCount];
-        matrix[currNodeCount + 1].up = &matrix[(currNodeCount + 1) - prevRowCount];
-    }
-}
-
-/**
- * A utility function to assist in the generation of the matrix structure and appropriate links, this function
- * malloc's the entire matrix structure, populates the first entry and returns the address of the malloc'd memory.
- * 
- * @param int An integer representing the total number of nodes that need to be created.
- * @return struct node* Returns the address of the malloc'd matrix structure.
- */ 
-struct node* Core::generateHeadNode(int nodeCount)
-{
-    struct node* matrix = static_cast<struct node*>(malloc(sizeof(struct node) * (nodeCount + 1)));
-
-    matrix[0].data = 0;
-    matrix[0].top = matrix;
-    matrix[0].left = matrix;
-    matrix[0].right = matrix;
-
-    return matrix;
 }
 
 /**
@@ -904,154 +646,6 @@ void Core::printSolutions(char** solutions, const uint32_t* row_ids, int level, 
     }
 
     output.emit_binary_row(row_ids, level);
-}
-
-/**
- * An auxilary function for reading the provided cover file and counting the total number of actual nodes that need to be 
- * created for the provided cover file. The value returned is added into the total number of items (column headers) that
- * were counted previously.
- * 
- * @param FILE* A file pointer to a file which contains a cover definition.
- * @return int Returns the number of nodes within the defined cover definition.
- */
-int Core::getNodeCount(FILE* coverFile)
-{
-    size_t len = 0;
-    ssize_t read = 0;
-    int nodeCount = 0;
-    char* buffer = NULL;
-
-    // Count number of item options which is equivalent to number of actual nodes in structure
-    nodeCount += getOptionNodesCount(coverFile);
-    
-    // Reset file descriptor back to beginning of file
-    fseek(coverFile, 0L, SEEK_SET);
-
-    // Count number of lines which is equivalent to number of spacer nodes that need to be created 
-    while ((read = getline(&buffer, &len, coverFile)) != -1)
-    {
-        nodeCount++;
-    }
-    
-    // Reset file descriptor back to beginning of file
-    fseek(coverFile, 0L, SEEK_SET);
-
-    free(buffer);
-
-    return nodeCount;
-}
-
-/**
- * An auxilary function for reading the provided cover file and counting the number of titles defined as
- * column headers that are defined in the cover file.
- * 
- * @param FILE* A file pointer to a file which contains a cover definition.
- * @return int Returns the number of items (column headers) defined in the cover file.
- */
-int Core::getItemCount(FILE* coverFile)
-{
-    size_t len = 0;
-    ssize_t read = 0;
-    int itemCount = 0;
-    char* buffer = NULL;
-
-    // Count number of lines which is equivalent to number of spacer nodes that need to be created 
-    while ((read = getline(&buffer, &len, coverFile)) != -1)
-    {
-        char* newlinePtr;
-        char* itemTitle = strtok(buffer, SPACE_DELIMITER);
-
-        // While delimited substring is not null and current item count is less than
-        // the desired item length, continue processing item columns
-        while (itemTitle != NULL)
-        {
-            // If newline character exists in title string, remove the character
-            if ((newlinePtr = strstr(itemTitle, "\n")) != NULL)
-            {
-                strncpy(newlinePtr, "\0", 1);
-            }
-
-            itemCount++;
-            itemTitle = strtok(NULL, SPACE_DELIMITER);
-        }
-
-        break;
-    }
-
-    // Reset file descriptor back to beginning of file
-    fseek(coverFile, 0L, SEEK_SET);
-
-    free(buffer);
-
-    return itemCount;
-}
-
-/**
- * An auxilary function for reading the provided cover file and counting the number of lines that are 
- * defined in the cover file. The number of lines are associated with the number of spacer nodes that will
- * need to be created.
- * 
- * @param FILE* A file pointer to a file which contains a cover definition.
- * @return int Returns the number of lines defined in the cover file; associated with number of spacer nodes.
- */
-int Core::getOptionsCount(FILE* coverFile)
-{
-    size_t len = 0;
-    ssize_t read = 0;
-    char* buffer = NULL;
-    int optionsCount = 0;
-
-    // Count number of lines which is equivalent to number of spacer nodes that need to be created 
-    while ((read = getline(&buffer, &len, coverFile)) != -1)
-    {
-        optionsCount++;
-    }
-
-    // Reset file descriptor back to beginning of file
-    fseek(coverFile, 0L, SEEK_SET);
-
-    free(buffer);
-
-    return optionsCount;
-}
-
-/**
- * An auxilary function for reading the provided cover file and counting the number of option nodes that
- * are defined in the cover file.
- * 
- * @param FILE* A file pointer to a file which contains a cover definition.
- * @return int Returns the number of option nodes defined in the cover file.
- */ 
-int Core::getOptionNodesCount(FILE* coverFile)
-{
-    size_t len = 0;
-    ssize_t read = 0;
-    char* buffer = NULL;
-    int optionCount = 0;
-
-    // Skip over title line
-    read = getline(&buffer, &len, coverFile);
-
-    // Feed in line by line chunks for processing
-    while ((read = getline(&buffer, &len, coverFile)) != -1)
-    {
-        // Read sparse matrix and count number of 1's that represent a node.
-        for (char* ch = buffer; *ch; ch++)
-        {
-            // Count number of 1's that are described in the file.
-            if (*ch == '1')
-            {
-                optionCount++;
-            }
-        }
-    }
-
-    // Reset file descriptor back to beginning of file
-    fseek(coverFile, 0L, SEEK_SET);
-
-    free(buffer);
-
-    return optionCount;
 }
 
 /**

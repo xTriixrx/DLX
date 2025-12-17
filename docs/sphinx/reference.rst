@@ -28,41 +28,54 @@ Core Library
    :linenos:
    :class: astro-mui-prototypes
 
-``include/core/dlx_binary.h``
+``include/core/binary.h``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   #include "core/dlx_binary.h"
+   #include "core/binary.h"
 
-.. literalinclude:: ../../include/core/dlx_binary.h
+.. literalinclude:: ../../include/core/binary.h
    :language: cpp
    :linenos:
    :class: astro-mui-prototypes
 
-``include/core/dlx_server.h``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   #include "core/dlx_server.h"
-
-.. literalinclude:: ../../include/core/dlx_server.h
-   :language: cpp
-   :linenos:
-   :class: astro-mui-prototypes
-
-``include/core/dlx_tcp_server.h``
+``include/core/tcp_server.h``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   #include "core/dlx_tcp_server.h"
+   #include "core/tcp_server.h"
 
-.. literalinclude:: ../../include/core/dlx_tcp_server.h
+.. literalinclude:: ../../include/core/tcp_server.h
+   :language: cpp
+   :linenos:
+   :class: astro-mui-prototypes
+
+``include/core/matrix.h``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: cpp
+   :class: astro-mui-prototypes
+
+   #include "core/matrix.h"
+
+.. literalinclude:: ../../include/core/matrix.h
+   :language: cpp
+   :linenos:
+   :class: astro-mui-prototypes
+
+``include/core/text.h``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: cpp
+   :class: astro-mui-prototypes
+
+   #include "core/text.h"
+
+.. literalinclude:: ../../include/core/text.h
    :language: cpp
    :linenos:
    :class: astro-mui-prototypes

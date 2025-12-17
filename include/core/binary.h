@@ -1,5 +1,5 @@
-#ifndef DLX_BINARY_H
-#define DLX_BINARY_H
+#ifndef CORE_BINARY_H
+#define CORE_BINARY_H
 
 #include <stdint.h>
 #include <stdio.h>

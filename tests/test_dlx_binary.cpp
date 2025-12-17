@@ -1,5 +1,5 @@
 #include "core/dlx.h"
-#include "core/dlx_binary.h"
+#include "core/binary.h"
 #include "sudoku/encoder/sudoku_encoder.h"
 #include "ascii_binary_utils.h"
 #include <cstdio>

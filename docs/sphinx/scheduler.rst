@@ -61,7 +61,7 @@ DLXB Packet Structure
 ---------------------
 
 The ``scheduler_core::dlxb`` module provides a type-safe API for constructing DLXB packets. The Rust
-definitions mirror the C++ structs used inside ``include/core/dlx_binary.h``:
+definitions mirror the C++ structs used inside ``include/core/binary.h``:
 
 .. code-block:: rust
    :class: astro-mui-prototypes
@@ -114,7 +114,7 @@ DLXS Packet Structure
 
 On the solution side ``scheduler_core::dlxs`` exposes ``DlxsHeader``, ``DlxsSolutionRow``, and
 ``DlxsPacket``. These definitions ensure Rust decoders treat the streaming protocol exactly like the
-existing C++ ``dlx_tcp_server`` implementation.
+existing C++ ``tcp_server`` implementation.
 
 .. code-block:: rust
    :class: astro-mui-prototypes
