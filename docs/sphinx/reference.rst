@@ -83,28 +83,28 @@ Core Library
 Sudoku Pipeline
 ---------------
 
-``include/sudoku/encoder/sudoku_encoder.h``
+``include/sudoku/encoder/encoder.h``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   #include "sudoku/encoder/sudoku_encoder.h"
+   #include "sudoku/encoder/encoder.h"
 
-.. literalinclude:: ../../include/sudoku/encoder/sudoku_encoder.h
+.. literalinclude:: ../../include/sudoku/encoder/encoder.h
    :language: cpp
    :linenos:
    :class: astro-mui-prototypes
 
-``include/sudoku/decoder/sudoku_decoder.h``
+``include/sudoku/decoder/decoder.h``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   #include "sudoku/decoder/sudoku_decoder.h"
+   #include "sudoku/decoder/decoder.h"
 
-.. literalinclude:: ../../include/sudoku/decoder/sudoku_decoder.h
+.. literalinclude:: ../../include/sudoku/decoder/decoder.h
    :language: cpp
    :linenos:
    :class: astro-mui-prototypes

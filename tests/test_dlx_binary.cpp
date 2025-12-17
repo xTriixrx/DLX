@@ -1,6 +1,6 @@
 #include "core/dlx.h"
 #include "core/binary.h"
-#include "sudoku/encoder/sudoku_encoder.h"
+#include "sudoku/encoder/encoder.h"
 #include "ascii_binary_utils.h"
 #include <cstdio>
 #include <cstdlib>

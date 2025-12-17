@@ -1,6 +1,6 @@
-#include "sudoku/decoder/sudoku_decoder.h"
+#include "sudoku/decoder/decoder.h"
 #include "core/binary.h"
-#include "sudoku/encoder/sudoku_encoder.h"
+#include "sudoku/encoder/encoder.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>

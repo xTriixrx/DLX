@@ -1,6 +1,6 @@
 #include "core/binary.h"
-#include "sudoku/decoder/sudoku_decoder.h"
-#include "sudoku/encoder/sudoku_encoder.h"
+#include "sudoku/decoder/decoder.h"
+#include "sudoku/encoder/encoder.h"
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>

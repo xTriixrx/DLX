@@ -33,11 +33,11 @@ add_library(dlx_binary STATIC
 )
 target_include_directories(dlx_binary PUBLIC include)
 
-add_library(sudoku_encoder_lib STATIC src/sudoku/encoder/sudoku_encoder.cpp)
+add_library(sudoku_encoder_lib STATIC src/sudoku/encoder/encoder.cpp)
 target_link_libraries(sudoku_encoder_lib PUBLIC dlx_binary)
 target_include_directories(sudoku_encoder_lib PUBLIC include)
 
-add_library(sudoku_decoder_lib STATIC src/sudoku/decoder/sudoku_decoder.cpp)
+add_library(sudoku_decoder_lib STATIC src/sudoku/decoder/decoder.cpp)
 target_link_libraries(sudoku_decoder_lib PUBLIC sudoku_encoder_lib dlx_binary)
 target_include_directories(sudoku_decoder_lib PUBLIC include)
 
@@ -45,10 +45,10 @@ add_executable(dlx src/core/dlx.cpp)
 target_include_directories(dlx PRIVATE include)
 target_link_libraries(dlx PRIVATE dlx_binary)
 
-add_executable(sudoku_encoder src/sudoku/encoder/sudoku_encoder_main.cpp)
+add_executable(sudoku_encoder src/sudoku/encoder/encoder_main.cpp)
 target_link_libraries(sudoku_encoder PRIVATE sudoku_encoder_lib)
 
-add_executable(sudoku_decoder src/sudoku/decoder/sudoku_decoder_main.cpp)
+add_executable(sudoku_decoder src/sudoku/decoder/decoder_main.cpp)
 target_link_libraries(sudoku_decoder PRIVATE sudoku_decoder_lib)
 
 include(CTest)

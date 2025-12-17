@@ -1,4 +1,4 @@
-#include "sudoku/encoder/sudoku_encoder.h"
+#include "sudoku/encoder/encoder.h"
 #include "core/binary.h"
 #include <ctype.h>
 #include <stdbool.h>

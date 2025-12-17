@@ -1,4 +1,4 @@
-#include "sudoku/decoder/sudoku_decoder.h"
+#include "sudoku/decoder/decoder.h"
 #include <stdio.h>
 #include <stdlib.h>
 
