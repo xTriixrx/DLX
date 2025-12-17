@@ -76,6 +76,26 @@ CONAN_HOME=$(pwd)/conan PYTHONPATH=$(pwd) conan doc --build-folder build-debug -
 
 > **Note:** If you already have GoogleTest installed system-wide (e.g., via Homebrew), the build will use that installation. Otherwise, Conan will fetch and build `gtest` from ConanCenter (pass `--build gtest` if a binary isn’t available for your platform).
 
+### DLX Search Performance Suite
+
+The `dlx_performance_tests` target now drives the core `search` routine through multiple tiers of synthetic matrices: 1 000/10 000/100 000/1 000 000-column covers tested twice, first with digit-count-sized column groups and two variants per group, then with extra groups and three variants per group to amplify branching. The suite runs the individual cases in parallel up to the host’s hardware concurrency so every CPU core contributes. Invoke it with `ctest -R dlx_performance_tests` (or `./build/test_dlx_performance`) and it writes consolidated timing/solution metrics to `dlx_search_performance.csv` inside the build directory on success.
+
+## Tests
+
+The performance harness (`tests/test_dlx_performance.cpp`) constructs its matrices directly in memory to avoid the DLXB row-size limits. Each `PerformanceParam` entry specifies:
+
+- The number of constraint columns.
+- How many contiguous column groups to create (either the base-10 digit heuristic or a larger custom value to deepen recursion).
+- How many identical option rows (“variants”) to emit per group.
+
+For every case the generator:
+
+- Splits the column range into evenly sized groups and builds rows that only touch the columns within their group, ensuring disjoint coverage.
+- Duplicates each group row `variants_per_group` times, so the solver must pick exactly one row per group and yields `variants_per_group^group_count` predictable solutions.
+- Links nodes with the same spacer wiring used by `Core::generateMatrixBinaryImpl`, preserving the live matrix structure.
+
+Cases are executed in parallel across the available CPU cores, with deterministic validation of the expected solution counts before timing data is recorded. Once all permutations succeed, `dlx_search_performance.csv` is emitted in the build directory with columns/groups/variants/solutions/duration for every run. This combination of param-driven matrices and strict validation makes the suite a reliable sentinel for regressions in `search`.
+
 #### Conan Configuration
 
 You must ensure you have Conan 2.x installed on your build machine. The repo includes the recommended remotes/profile/commands, so you can bootstrap everything with:

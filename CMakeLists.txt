@@ -78,6 +78,11 @@ if(BUILD_TESTING)
     add_test(NAME matrix_dump_tests COMMAND test_matrix_dump)
     set_tests_properties(matrix_dump_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+    add_executable(test_dlx_performance tests/test_dlx_performance.cpp)
+    target_link_libraries(test_dlx_performance PRIVATE dlx_binary GTest::gtest_main)
+    add_test(NAME dlx_performance_tests COMMAND test_dlx_performance)
+    set_tests_properties(dlx_performance_tests PROPERTIES WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
     add_executable(test_sudoku_pipeline tests/test_sudoku_pipeline.cpp)
     add_dependencies(test_sudoku_pipeline dlx sudoku_encoder sudoku_decoder)
     target_link_libraries(test_sudoku_pipeline PRIVATE GTest::gtest_main)
