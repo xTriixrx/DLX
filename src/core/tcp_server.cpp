@@ -7,49 +7,78 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <algorithm>
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
+#include <ostream>
+#include <streambuf>
 #include <sstream>
 #include <vector>
 
 namespace dlx {
 
-struct DlxTcpServer::SolutionClient
-{
-    int fd;
-    FILE* stream;
-    uint32_t next_solution_id;
-    bool header_sent;
-
-    SolutionClient(int socket_fd, FILE* file)
-        : fd(socket_fd)
-        , stream(file)
-        , next_solution_id(1)
-        , header_sent(false)
-    {}
-
-    ~SolutionClient()
-    {
-        if (stream != nullptr)
-        {
-            fclose(stream);
-            stream = nullptr;
-            fd = -1;
-        }
-        else if (fd >= 0)
-        {
-            close(fd);
-            fd = -1;
-        }
-    }
-};
-
 namespace {
 
 constexpr size_t kIoBufferSize = 4096;
 
-bool write_solution_header(FILE* stream, uint32_t column_count)
+class SocketStreambuf : public std::streambuf
+{
+public:
+    explicit SocketStreambuf(int fd)
+        : fd_(fd)
+    {}
+
+protected:
+    std::streamsize xsputn(const char* s, std::streamsize count) override
+    {
+        std::streamsize total = 0;
+        while (total < count)
+        {
+            ssize_t written = send(fd_, s + total, static_cast<size_t>(count - total), 0);
+            if (written <= 0)
+            {
+                return total;
+            }
+            total += written;
+        }
+        return total;
+    }
+
+    int overflow(int ch) override
+    {
+        if (ch == traits_type::eof())
+        {
+            return traits_type::not_eof(ch);
+        }
+
+        char c = static_cast<char>(ch);
+        return xsputn(&c, 1) == 1 ? ch : traits_type::eof();
+    }
+
+    int sync() override
+    {
+        return 0;
+    }
+
+private:
+    int fd_;
+};
+
+class SocketOutputStream : public std::ostream
+{
+public:
+    explicit SocketOutputStream(int fd)
+        : std::ostream(nullptr)
+        , buffer_(fd)
+    {
+        rdbuf(&buffer_);
+    }
+
+private:
+    SocketStreambuf buffer_;
+};
+
+bool write_solution_header(std::ostream& stream, uint32_t column_count)
 {
     struct DlxSolutionHeader header = {
         .magic = DLX_SOLUTION_MAGIC,
@@ -61,11 +90,36 @@ bool write_solution_header(FILE* stream, uint32_t column_count)
     {
         return false;
     }
-    fflush(stream);
-    return true;
+    stream.flush();
+    return stream.good();
 }
 
 } // namespace
+
+struct DlxTcpServer::SolutionClient
+{
+    int fd;
+    std::unique_ptr<SocketOutputStream> stream;
+    uint32_t next_solution_id;
+    bool header_sent;
+
+    SolutionClient(int socket_fd, std::unique_ptr<SocketOutputStream> output_stream)
+        : fd(socket_fd)
+        , stream(std::move(output_stream))
+        , next_solution_id(1)
+        , header_sent(false)
+    {}
+
+    ~SolutionClient()
+    {
+        stream.reset();
+        if (fd >= 0)
+        {
+            close(fd);
+            fd = -1;
+        }
+    }
+};
 
 DlxTcpServer::DlxTcpServer(const TcpServerConfig& config)
     : config_(config)
@@ -226,21 +280,14 @@ void DlxTcpServer::accept_solution_loop()
             continue;
         }
 
-        FILE* stream = fdopen(client_fd, "wb");
-        if (stream == nullptr)
-        {
-            close(client_fd);
-            continue;
-        }
-        setvbuf(stream, nullptr, _IONBF, 0);
-
-        auto client = std::make_shared<SolutionClient>(client_fd, stream);
+        auto stream = std::make_unique<SocketOutputStream>(client_fd);
+        auto client = std::make_shared<SolutionClient>(client_fd, std::move(stream));
         {
             std::lock_guard<std::mutex> lock(solution_mutex_);
             solution_clients_.push_back(client);
             if (active_column_count_.has_value())
             {
-                if (!write_solution_header(client->stream, active_column_count_.value()))
+                if (!write_solution_header(*client->stream, active_column_count_.value()))
                 {
                     client.reset();
                 }
@@ -300,7 +347,7 @@ void DlxTcpServer::process_problem_connection(int client_fd)
     begin_solution_stream(static_cast<uint32_t>(itemCount));
 
     SolutionOutput output;
-    output.binary_file = nullptr;
+    output.binary_stream = nullptr;
     output.binary_callback = &DlxTcpServer::emit_solution_row;
     output.binary_context = this;
 
@@ -322,7 +369,7 @@ void DlxTcpServer::begin_solution_stream(uint32_t column_count)
         {
             continue;
         }
-        if (!write_solution_header(client->stream, column_count))
+        if (!write_solution_header(*client->stream, column_count))
         {
             client.reset();
         }
@@ -364,7 +411,7 @@ void DlxTcpServer::broadcast_solution_row(const uint32_t* row_ids, int level)
             continue;
         }
 
-        if (dlx_write_solution_row(client->stream,
+        if (dlx_write_solution_row(*client->stream,
                                    client->next_solution_id,
                                    row_ids,
                                    static_cast<uint16_t>(level))
@@ -375,7 +422,7 @@ void DlxTcpServer::broadcast_solution_row(const uint32_t* row_ids, int level)
         else
         {
             client->next_solution_id += 1;
-            fflush(client->stream);
+            client->stream->flush();
         }
     }
     remove_disconnected_clients_locked();
@@ -391,13 +438,13 @@ void DlxTcpServer::broadcast_problem_complete()
             continue;
         }
 
-        if (dlx_write_solution_row(client->stream, 0, nullptr, 0) != 0)
+        if (dlx_write_solution_row(*client->stream, 0, nullptr, 0) != 0)
         {
             client.reset();
         }
         else
         {
-            fflush(client->stream);
+            client->stream->flush();
         }
     }
     remove_disconnected_clients_locked();

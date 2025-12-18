@@ -57,7 +57,7 @@ void Core::setMatrixDumpStream(std::ostream* stream)
 
 void SolutionOutput::emit_binary_row(const uint32_t* row_ids, int level)
 {
-    if (binary_file == NULL || level <= 0)
+    if (binary_stream == nullptr || level <= 0)
     {
         if (binary_callback != nullptr)
         {
@@ -72,7 +72,7 @@ void SolutionOutput::emit_binary_row(const uint32_t* row_ids, int level)
         return;
     }
 
-    if (dlx_write_solution_row(binary_file,
+    if (dlx_write_solution_row(*binary_stream,
                                next_solution_id,
                                row_ids,
                                static_cast<uint16_t>(level)) != 0)
@@ -88,13 +88,8 @@ void SolutionOutput::emit_binary_row(const uint32_t* row_ids, int level)
     }
 }
 
-int Core::dlx_enable_binary_solution_output(SolutionOutput& output_ctx, FILE* output, uint32_t column_count)
+int Core::dlx_enable_binary_solution_output(SolutionOutput& output_ctx, std::ostream& output, uint32_t column_count)
 {
-    if (output == NULL)
-    {
-        return -1;
-    }
-
     struct DlxSolutionHeader header = {
         .magic = DLX_SOLUTION_MAGIC,
         .version = DLX_BINARY_VERSION,
@@ -108,7 +103,7 @@ int Core::dlx_enable_binary_solution_output(SolutionOutput& output_ctx, FILE* ou
         return -1;
     }
 
-    output_ctx.binary_file = output;
+    output_ctx.binary_stream = &output;
     output_ctx.column_count = column_count;
     output_ctx.next_solution_id = 1;
     return 0;
@@ -116,7 +111,7 @@ int Core::dlx_enable_binary_solution_output(SolutionOutput& output_ctx, FILE* ou
 
 void Core::dlx_disable_binary_solution_output(SolutionOutput& output_ctx)
 {
-    output_ctx.binary_file = NULL;
+    output_ctx.binary_stream = nullptr;
     output_ctx.next_solution_id = 1;
     output_ctx.column_count = 0;
 }

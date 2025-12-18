@@ -33,27 +33,10 @@ std::string read_file_to_string(const char* path)
     return buffer.str();
 }
 
-std::string read_file_stream(FILE* file)
-{
-    if (file == nullptr)
-    {
-        return {};
-    }
-
-    std::string data;
-    std::vector<char> buffer(4096);
-    size_t bytes = 0;
-    while ((bytes = fread(buffer.data(), 1, buffer.size(), file)) > 0)
-    {
-        data.append(buffer.data(), static_cast<size_t>(bytes));
-    }
-    return data;
-}
-
 void write_header_and_chunk(const char* path)
 {
-    FILE* file = fopen(path, "wb");
-    ASSERT_NE(file, nullptr);
+    std::ofstream file(path, std::ios::binary);
+    ASSERT_TRUE(file.is_open());
 
     struct DlxCoverHeader header = {
         .magic = DLX_COVER_MAGIC,
@@ -70,7 +53,7 @@ void write_header_and_chunk(const char* path)
 
     ASSERT_EQ(dlx_write_row_chunk(file, 1, row1, 3), 0);
     ASSERT_EQ(dlx_write_row_chunk(file, 2, row2, 3), 0);
-    fclose(file);
+    file.close();
 }
 
 TEST(DlxBinaryTest, RoundTrip)
@@ -153,8 +136,8 @@ TEST(DlxBinaryTest, SolutionRoundTrip)
     ASSERT_NE(fd, -1);
     close(fd);
 
-    FILE* file = fopen(file_template, "wb");
-    ASSERT_NE(file, nullptr);
+    std::ofstream file(file_template, std::ios::binary);
+    ASSERT_TRUE(file.is_open());
 
     struct DlxSolutionHeader header = {
         .magic = DLX_SOLUTION_MAGIC,
@@ -167,7 +150,7 @@ TEST(DlxBinaryTest, SolutionRoundTrip)
 
     uint32_t rows[] = {10, 20, 30, 40};
     ASSERT_EQ(dlx_write_solution_row(file, 7, rows, 4), 0);
-    fclose(file);
+    file.close();
 
     std::ifstream solution_stream(file_template, std::ios::binary);
     ASSERT_TRUE(solution_stream.is_open());
@@ -220,8 +203,7 @@ TEST(DlxBinaryTest, DlxSolvesFromBinaryCoverAndEmitsBinarySolutions)
     uint32_t* row_ids = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * optionCount));
     ASSERT_NE(row_ids, nullptr);
 
-    FILE* binary_output = tmpfile();
-    ASSERT_NE(binary_output, nullptr);
+    std::ostringstream binary_output;
     dlx::SolutionOutput output_ctx;
     ASSERT_EQ(dlx::Core::dlx_enable_binary_solution_output(output_ctx, binary_output, static_cast<uint32_t>(itemCount)), 0);
 
@@ -231,11 +213,7 @@ TEST(DlxBinaryTest, DlxSolvesFromBinaryCoverAndEmitsBinarySolutions)
     std::string stdout_capture = testing::internal::GetCapturedStdout();
     EXPECT_EQ(stdout_capture, kExpectedSudokuRows);
 
-    fflush(binary_output);
-    rewind(binary_output);
-
-    std::string binary_data = read_file_stream(binary_output);
-    std::istringstream binary_stream(binary_data);
+    std::istringstream binary_stream(binary_output.str());
 
     struct DlxSolutionHeader solution_header;
     ASSERT_EQ(dlx_read_solution_header(binary_stream, &solution_header), 0);
@@ -254,7 +232,6 @@ TEST(DlxBinaryTest, DlxSolvesFromBinaryCoverAndEmitsBinarySolutions)
     EXPECT_EQ(dlx_read_solution_row(binary_stream, &row), 0);
 
     dlx_free_solution_row(&row);
-    fclose(binary_output);
     free(row_ids);
     dlx::Core::freeMemory(matrix, solutions);
     remove(cover_template);
@@ -265,15 +242,9 @@ TEST(DlxBinaryTest, AsciiCoverProducesBinarySolutionMatchingExpectedRows)
     std::string ascii_cover = read_file_to_string("tests/sudoku_cover.txt");
     ASSERT_FALSE(ascii_cover.empty());
 
-    FILE* cover_stream_file = tmpfile();
-    ASSERT_NE(cover_stream_file, nullptr);
-    ASSERT_EQ(ascii_cover_to_binary_stream(ascii_cover, cover_stream_file), 0);
-    fflush(cover_stream_file);
-    rewind(cover_stream_file);
-
-    std::string cover_data = read_file_stream(cover_stream_file);
-    fclose(cover_stream_file);
-    std::istringstream cover_stream(cover_data);
+    std::ostringstream cover_stream_output;
+    ASSERT_EQ(ascii_cover_to_binary_stream(ascii_cover, cover_stream_output), 0);
+    std::istringstream cover_stream(cover_stream_output.str());
 
     char** solutions = NULL;
     int itemCount = 0;
@@ -287,8 +258,7 @@ TEST(DlxBinaryTest, AsciiCoverProducesBinarySolutionMatchingExpectedRows)
     uint32_t* row_ids = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * optionCount));
     ASSERT_NE(row_ids, nullptr);
 
-    FILE* binary_output = tmpfile();
-    ASSERT_NE(binary_output, nullptr);
+    std::ostringstream binary_output;
 
     dlx::SolutionOutput output_ctx;
     ASSERT_EQ(dlx::Core::dlx_enable_binary_solution_output(output_ctx, binary_output, static_cast<uint32_t>(itemCount)), 0);
@@ -299,13 +269,11 @@ TEST(DlxBinaryTest, AsciiCoverProducesBinarySolutionMatchingExpectedRows)
     std::string stdout_capture = testing::internal::GetCapturedStdout();
     EXPECT_EQ(stdout_capture, kExpectedSudokuRows);
 
-    fflush(binary_output);
-    rewind(binary_output);
+    std::istringstream binary_solution_stream(binary_output.str());
     std::string ascii_solution;
-    ASSERT_EQ(binary_solution_to_ascii(binary_output, &ascii_solution), 0);
+    ASSERT_EQ(binary_solution_to_ascii(binary_solution_stream, &ascii_solution), 0);
     EXPECT_EQ(ascii_solution, kExpectedSudokuRows);
 
-    fclose(binary_output);
     free(row_ids);
     dlx::Core::freeMemory(matrix, solutions);
 }

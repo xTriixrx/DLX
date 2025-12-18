@@ -5,13 +5,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fstream>
+#include <iostream>
 
 static int parse_puzzle(FILE* input,
                         int grid[GRID_SIZE][GRID_SIZE],
                         bool row_used[GRID_SIZE][DIGIT_COUNT + 1],
                         bool col_used[GRID_SIZE][DIGIT_COUNT + 1],
                         bool box_used[GRID_SIZE][DIGIT_COUNT + 1]);
-static int write_binary_cover(FILE* output,
+static int write_binary_cover(std::ostream& output,
                               const int grid[GRID_SIZE][GRID_SIZE],
                               const bool row_used[GRID_SIZE][DIGIT_COUNT + 1],
                               const bool col_used[GRID_SIZE][DIGIT_COUNT + 1],
@@ -33,10 +35,25 @@ int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path)
     }
 
     bool write_to_stdout = (strcmp(cover_path, "-") == 0);
-    FILE* output = write_to_stdout ? stdout : fopen(cover_path, "wb");
-    if (output == NULL)
+    std::ofstream output_file;
+    std::ostream* output_stream = nullptr;
+    if (write_to_stdout)
     {
-        fprintf(stderr, "Unable to create cover file %s\n", cover_path);
+        output_stream = &std::cout;
+    }
+    else
+    {
+        output_file.open(cover_path, std::ios::binary);
+        if (!output_file.is_open())
+        {
+            fprintf(stderr, "Unable to create cover file %s\n", cover_path);
+            return 1;
+        }
+        output_stream = &output_file;
+    }
+
+    if (output_stream == nullptr)
+    {
         return 1;
     }
 
@@ -45,33 +62,36 @@ int convert_sudoku_to_cover(const char* puzzle_path, const char* cover_path)
     bool col_used[GRID_SIZE][DIGIT_COUNT + 1] = {{false}};
     bool box_used[GRID_SIZE][DIGIT_COUNT + 1] = {{false}};
 
-    if (load_sudoku_state(puzzle_path, grid, row_used, col_used, box_used) != 0)
-    {
-        if (!write_to_stdout)
+    auto cleanup_failed_output = [&]() {
+        if (!write_to_stdout && output_file.is_open())
         {
-            fclose(output);
+            output_file.close();
             remove(cover_path);
         }
+    };
+
+    if (load_sudoku_state(puzzle_path, grid, row_used, col_used, box_used) != 0)
+    {
+        cleanup_failed_output();
         return 1;
     }
 
-    if (write_binary_cover(output, grid, row_used, col_used, box_used) != 0)
+    if (write_binary_cover(*output_stream, grid, row_used, col_used, box_used) != 0)
     {
-        if (!write_to_stdout)
-        {
-            fclose(output);
-            remove(cover_path);
-        }
+        cleanup_failed_output();
         return 1;
     }
 
     if (!write_to_stdout)
     {
-        fclose(output);
+        if (output_file.is_open())
+        {
+            output_file.close();
+        }
     }
     else
     {
-        fflush(output);
+        output_stream->flush();
     }
     return 0;
 }
@@ -242,7 +262,7 @@ static void build_column_indices(int row, int col, int digit, uint32_t indices[4
 
 struct binary_writer_ctx
 {
-    FILE* output;
+    std::ostream* output;
     uint32_t next_row_id;
 };
 
@@ -251,7 +271,7 @@ static int binary_row_handler(int row, int col, int digit, void* ctx)
     struct binary_writer_ctx* writer = static_cast<struct binary_writer_ctx*>(ctx);
     uint32_t indices[4];
     build_column_indices(row, col, digit, indices);
-    if (dlx_write_row_chunk(writer->output, writer->next_row_id, indices, 4) != 0)
+    if (dlx_write_row_chunk(*writer->output, writer->next_row_id, indices, 4) != 0)
     {
         return 1;
     }
@@ -260,7 +280,7 @@ static int binary_row_handler(int row, int col, int digit, void* ctx)
     return 0;
 }
 
-static int write_binary_cover(FILE* output,
+static int write_binary_cover(std::ostream& output,
                               const int grid[GRID_SIZE][GRID_SIZE],
                               const bool row_used[GRID_SIZE][DIGIT_COUNT + 1],
                               const bool col_used[GRID_SIZE][DIGIT_COUNT + 1],
@@ -279,6 +299,6 @@ static int write_binary_cover(FILE* output,
         return 1;
     }
 
-    struct binary_writer_ctx ctx = {.output = output, .next_row_id = 1};
+    struct binary_writer_ctx ctx = {.output = &output, .next_row_id = 1};
     return iterate_sudoku_candidates(grid, row_used, col_used, box_used, binary_row_handler, &ctx);
 }

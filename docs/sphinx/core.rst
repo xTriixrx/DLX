@@ -124,7 +124,7 @@ Binary Interface Helpers
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_write_cover_header(FILE* output, const DlxCoverHeader* header);
+   int dlx_write_cover_header(std::ostream& output, const DlxCoverHeader* header);
 
 .. doxygenfunction:: dlx_write_cover_header
    :project: dlx
@@ -142,7 +142,7 @@ Binary Interface Helpers
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_write_row_chunk(FILE* output, uint32_t row_id, const uint32_t* columns, uint16_t column_count);
+   int dlx_write_row_chunk(std::ostream& output, uint32_t row_id, const uint32_t* columns, uint16_t column_count);
 
 .. doxygenfunction:: dlx_write_row_chunk
    :project: dlx
@@ -169,7 +169,7 @@ Binary Interface Helpers
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_write_solution_header(FILE* output, const DlxSolutionHeader* header);
+   int dlx_write_solution_header(std::ostream& output, const DlxSolutionHeader* header);
 
 .. doxygenfunction:: dlx_write_solution_header
    :project: dlx
@@ -205,7 +205,7 @@ Streaming Interfaces
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_write_solution_row(FILE* output, uint32_t solution_id, const uint32_t* row_indices, uint16_t row_count);
+   int dlx_write_solution_row(std::ostream& output, uint32_t solution_id, const uint32_t* row_indices, uint16_t row_count);
 
 .. doxygenfunction:: dlx_write_solution_row
    :project: dlx
@@ -388,7 +388,7 @@ Solver Interfaces
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_enable_binary_solution_output(FILE* output, uint32_t column_count);
+   int dlx_enable_binary_solution_output(std::ostream& output, uint32_t column_count);
 
 .. doxygenfunction:: dlx_enable_binary_solution_output
    :project: dlx

@@ -156,11 +156,20 @@ static bool setup_output_context(const char* solution_path, int item_count, Outp
 {
     ctx.reset();
     ctx.write_to_stdout = (strcmp(solution_path, "-") == 0);
-    ctx.file = ctx.write_to_stdout ? stdout : fopen(solution_path, "wb");
-    if (ctx.file == NULL)
+    if (ctx.write_to_stdout)
     {
-        printf("Unable to create output file %s.\n", solution_path);
-        return false;
+        ctx.stream = &std::cout;
+    }
+    else
+    {
+        auto file_stream = std::make_unique<std::ofstream>(solution_path, std::ios::binary);
+        if (!file_stream->is_open())
+        {
+            printf("Unable to create output file %s.\n", solution_path);
+            return false;
+        }
+        ctx.stream = file_stream.get();
+        ctx.owned_file_stream = std::move(file_stream);
     }
 
     ctx.stdout_suppressed = ctx.write_to_stdout;
@@ -176,9 +185,11 @@ static bool setup_output_context(const char* solution_path, int item_count, Outp
     }
     ctx.output.sink = ctx.sink_router.empty() ? nullptr : &ctx.sink_router;
 
-    if (dlx::Core::dlx_enable_binary_solution_output(ctx.output,
-                                                     ctx.file,
-                                                     static_cast<uint32_t>(item_count)) != 0)
+    if (ctx.stream == nullptr
+        || dlx::Core::dlx_enable_binary_solution_output(ctx.output,
+                                                        *ctx.stream,
+                                                        static_cast<uint32_t>(item_count))
+            != 0)
     {
         printf("Failed to enable binary solution output.\n");
         ctx.reset();

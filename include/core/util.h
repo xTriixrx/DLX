@@ -4,8 +4,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <fstream>
 #include <istream>
 #include <memory>
+#include <ostream>
 
 #include "core/dlx.h"
 
@@ -72,7 +74,8 @@ struct SolutionBuffer
 struct OutputContext
 {
     dlx::SolutionOutput output {};
-    FILE* file = nullptr;
+    std::ostream* stream = nullptr;
+    std::unique_ptr<std::ofstream> owned_file_stream;
     bool write_to_stdout = false;
     bool stdout_suppressed = false;
     bool binary_output_enabled = false;
@@ -106,21 +109,26 @@ struct OutputContext
             stdout_suppressed = false;
         }
 
-        if (file != nullptr)
+        if (stream != nullptr)
         {
             if (write_to_stdout)
             {
-                fflush(file);
+                stream->flush();
             }
             else
             {
-                fclose(file);
+                if (owned_file_stream)
+                {
+                    owned_file_stream->close();
+                    owned_file_stream.reset();
+                }
             }
         }
 
         console_sink.reset();
+        owned_file_stream.reset();
         sink_router = dlx::CompositeSolutionSink();
-        file = nullptr;
+        stream = nullptr;
         write_to_stdout = false;
         stdout_suppressed = false;
         binary_output_enabled = false;

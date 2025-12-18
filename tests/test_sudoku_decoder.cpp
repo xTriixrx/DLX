@@ -2,6 +2,7 @@
 #include "sudoku/decoder/decoder.h"
 #include "sudoku/encoder/encoder.h"
 #include <gtest/gtest.h>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <string.h>
@@ -77,8 +78,8 @@ TEST(SudokuDecoderTest, ReconstructsBinarySolution)
     ASSERT_NE(binary_fd, -1);
     close(binary_fd);
 
-    FILE* binary_rows = fopen(binary_template, "wb");
-    ASSERT_NE(binary_rows, nullptr);
+    std::ofstream binary_rows(binary_template, std::ios::binary);
+    ASSERT_TRUE(binary_rows.is_open());
 
     struct DlxSolutionHeader header = {
         .magic = DLX_SOLUTION_MAGIC,
@@ -91,7 +92,7 @@ TEST(SudokuDecoderTest, ReconstructsBinarySolution)
     ASSERT_EQ(dlx_write_solution_row(
                   binary_rows, 1, indices.data(), static_cast<uint16_t>(indices.size())),
               0);
-    fclose(binary_rows);
+    binary_rows.close();
 
     char output_template[] = "tests/tmp_solvedXXXXXX";
     int output_fd = mkstemp(output_template);

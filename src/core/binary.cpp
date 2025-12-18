@@ -2,9 +2,9 @@
 #include "core/dlx.h"
 #include <arpa/inet.h>
 #include <climits>
-#include <cstdio>
 #include <cstdlib>
 #include <istream>
+#include <ostream>
 
 static int ensure_chunk_capacity(struct DlxRowChunk* chunk, uint16_t required);
 static int ensure_solution_capacity(struct DlxSolutionRow* row, uint16_t required);
@@ -54,11 +54,28 @@ private:
     std::istream& stream_;
 };
 
+class StreamBinaryWriter
+{
+public:
+    explicit StreamBinaryWriter(std::ostream& stream)
+        : stream_(stream)
+    {}
+
+    bool write_exact(const void* buffer, size_t bytes)
+    {
+        stream_.write(static_cast<const char*>(buffer), static_cast<std::streamsize>(bytes));
+        return stream_.good();
+    }
+
+private:
+    std::ostream& stream_;
+};
+
 } // namespace
 
-int dlx_write_cover_header(FILE* output, const struct DlxCoverHeader* header)
+int dlx_write_cover_header(std::ostream& output, const struct DlxCoverHeader* header)
 {
-    if (output == NULL || header == NULL)
+    if (header == NULL)
     {
         return -1;
     }
@@ -70,8 +87,8 @@ int dlx_write_cover_header(FILE* output, const struct DlxCoverHeader* header)
     writable.column_count = dlx_htonl(header->column_count);
     writable.row_count = dlx_htonl(header->row_count);
 
-    size_t written = fwrite(&writable, sizeof(writable), 1, output);
-    return written == 1 ? 0 : -1;
+    StreamBinaryWriter writer(output);
+    return writer.write_exact(&writable, sizeof(writable)) ? 0 : -1;
 }
 
 int dlx_read_cover_header(std::istream& input, struct DlxCoverHeader* header)
@@ -96,9 +113,9 @@ int dlx_read_cover_header(std::istream& input, struct DlxCoverHeader* header)
     return 0;
 }
 
-int dlx_write_row_chunk(FILE* output, uint32_t row_id, const uint32_t* columns, uint16_t column_count)
+int dlx_write_row_chunk(std::ostream& output, uint32_t row_id, const uint32_t* columns, uint16_t column_count)
 {
-    if (output == NULL || (column_count > 0 && columns == NULL))
+    if (column_count > 0 && columns == NULL)
     {
         return -1;
     }
@@ -106,12 +123,13 @@ int dlx_write_row_chunk(FILE* output, uint32_t row_id, const uint32_t* columns, 
     uint32_t row_id_net = dlx_htonl(row_id);
     uint16_t entry_count_net = dlx_htons(column_count);
 
-    if (fwrite(&row_id_net, sizeof(row_id_net), 1, output) != 1)
+    StreamBinaryWriter writer(output);
+    if (!writer.write_exact(&row_id_net, sizeof(row_id_net)))
     {
         return -1;
     }
 
-    if (fwrite(&entry_count_net, sizeof(entry_count_net), 1, output) != 1)
+    if (!writer.write_exact(&entry_count_net, sizeof(entry_count_net)))
     {
         return -1;
     }
@@ -119,7 +137,7 @@ int dlx_write_row_chunk(FILE* output, uint32_t row_id, const uint32_t* columns, 
     for (uint16_t i = 0; i < column_count; i++)
     {
         uint32_t col_net = dlx_htonl(columns[i]);
-        if (fwrite(&col_net, sizeof(col_net), 1, output) != 1)
+        if (!writer.write_exact(&col_net, sizeof(col_net)))
         {
             return -1;
         }
@@ -217,9 +235,9 @@ void dlx_free_row_chunk(struct DlxRowChunk* chunk)
     chunk->capacity = 0;
 }
 
-int dlx_write_solution_header(FILE* output, const struct DlxSolutionHeader* header)
+int dlx_write_solution_header(std::ostream& output, const struct DlxSolutionHeader* header)
 {
-    if (output == NULL || header == NULL)
+    if (header == NULL)
     {
         return -1;
     }
@@ -230,8 +248,8 @@ int dlx_write_solution_header(FILE* output, const struct DlxSolutionHeader* head
     writable.flags = dlx_htons(header->flags);
     writable.column_count = dlx_htonl(header->column_count);
 
-    size_t written = fwrite(&writable, sizeof(writable), 1, output);
-    return written == 1 ? 0 : -1;
+    StreamBinaryWriter writer(output);
+    return writer.write_exact(&writable, sizeof(writable)) ? 0 : -1;
 }
 
 int dlx_read_solution_header(std::istream& input, struct DlxSolutionHeader* header)
@@ -255,12 +273,12 @@ int dlx_read_solution_header(std::istream& input, struct DlxSolutionHeader* head
     return 0;
 }
 
-int dlx_write_solution_row(FILE* output,
+int dlx_write_solution_row(std::ostream& output,
                            uint32_t solution_id,
                            const uint32_t* row_indices,
                            uint16_t row_count)
 {
-    if (output == NULL || (row_count > 0 && row_indices == NULL))
+    if (row_count > 0 && row_indices == NULL)
     {
         return -1;
     }
@@ -268,12 +286,13 @@ int dlx_write_solution_row(FILE* output,
     uint32_t id_net = dlx_htonl(solution_id);
     uint16_t count_net = dlx_htons(row_count);
 
-    if (fwrite(&id_net, sizeof(id_net), 1, output) != 1)
+    StreamBinaryWriter writer(output);
+    if (!writer.write_exact(&id_net, sizeof(id_net)))
     {
         return -1;
     }
 
-    if (fwrite(&count_net, sizeof(count_net), 1, output) != 1)
+    if (!writer.write_exact(&count_net, sizeof(count_net)))
     {
         return -1;
     }
@@ -281,7 +300,7 @@ int dlx_write_solution_row(FILE* output,
     for (uint16_t i = 0; i < row_count; i++)
     {
         uint32_t value_net = dlx_htonl(row_indices[i]);
-        if (fwrite(&value_net, sizeof(value_net), 1, output) != 1)
+        if (!writer.write_exact(&value_net, sizeof(value_net)))
         {
             return -1;
         }

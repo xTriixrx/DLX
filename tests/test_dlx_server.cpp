@@ -10,7 +10,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <errno.h>
-#include <cstdio>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -35,30 +34,14 @@ std::string read_file_to_string(const char* path)
 
 std::vector<uint8_t> ascii_cover_to_bytes(const std::string& ascii)
 {
-    FILE* temp = tmpfile();
-    if (temp == nullptr)
+    std::ostringstream binary_stream;
+    if (ascii_cover_to_binary_stream(ascii, binary_stream) != 0)
     {
         return {};
     }
 
-    if (ascii_cover_to_binary_stream(ascii, temp) != 0)
-    {
-        fclose(temp);
-        return {};
-    }
-
-    fflush(temp);
-    rewind(temp);
-
-    std::vector<uint8_t> data;
-    std::vector<uint8_t> buffer(4096);
-    size_t read = 0;
-    while ((read = fread(buffer.data(), 1, buffer.size(), temp)) > 0)
-    {
-        data.insert(data.end(), buffer.begin(), buffer.begin() + static_cast<size_t>(read));
-    }
-    fclose(temp);
-    return data;
+    const std::string payload = binary_stream.str();
+    return std::vector<uint8_t>(payload.begin(), payload.end());
 }
 
 int connect_to_port(uint16_t port)

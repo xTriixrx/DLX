@@ -44,7 +44,7 @@ struct SolutionOutput
     using BinaryRowCallback = void (*)(void* ctx, const uint32_t* row_ids, int level);
 
     SolutionSink* sink;
-    FILE* binary_file;
+    std::ostream* binary_stream;
     BinaryRowCallback binary_callback;
     void* binary_context;
     uint32_t next_solution_id;
@@ -52,7 +52,7 @@ struct SolutionOutput
 
     SolutionOutput()
         : sink(nullptr)
-        , binary_file(nullptr)
+        , binary_stream(nullptr)
         , binary_callback(nullptr)
         , binary_context(nullptr)
         , next_solution_id(1)
@@ -72,7 +72,7 @@ public:
     static void setMatrixDumpStream(std::ostream* stream);
     static void search(struct node*, int, char**, uint32_t*, SolutionOutput&);
     static void freeMemory(struct node*, char**);
-    static int dlx_enable_binary_solution_output(SolutionOutput& output_ctx, FILE* output, uint32_t column_count);
+    static int dlx_enable_binary_solution_output(SolutionOutput& output_ctx, std::ostream& output, uint32_t column_count);
     static void dlx_disable_binary_solution_output(SolutionOutput& output_ctx);
     static void dlx_set_stdout_suppressed(bool suppressed);
 
