@@ -185,7 +185,7 @@ TEST(DlxBinaryTest, DlxSolvesFromBinaryCoverAndEmitsBinarySolutions)
     ASSERT_NE(cover_fd, -1);
     close(cover_fd);
 
-    ASSERT_EQ(convert_sudoku_to_cover("tests/sudoku_test.txt", cover_template), 0);
+    ASSERT_EQ(convert_sudoku_to_cover("tests/sudoku_tests/sudoku_test.txt", cover_template), 0);
 
     std::ifstream cover(cover_template, std::ios::binary);
     ASSERT_TRUE(cover.is_open());
@@ -239,7 +239,7 @@ TEST(DlxBinaryTest, DlxSolvesFromBinaryCoverAndEmitsBinarySolutions)
 
 TEST(DlxBinaryTest, AsciiCoverProducesBinarySolutionMatchingExpectedRows)
 {
-    std::string ascii_cover = read_file_to_string("tests/sudoku_cover.txt");
+    std::string ascii_cover = read_file_to_string("tests/sudoku_example/sudoku_cover.txt");
     ASSERT_FALSE(ascii_cover.empty());
 
     std::ostringstream cover_stream_output;

@@ -59,11 +59,17 @@ source .venv/bin/activate   # On Windows use .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Then configure/build/test:
+Then configure/build:
 
 ```bash
-# configure dependencies, then invoke the build (which runs ctest automatically in Debug)
+# configure dependencies, then invoke the build (Debug profile recommended)
 conan install . && conan build . -s build_type=Debug
+
+# run unit tests (performance suites excluded, uses binaries in ./build)
+conan test . -s build_type=Debug
+
+# run all suites (unit + performance) with 12-way parallel ctest
+conan test . -s build_type=Debug -o run_performance_tests=True
 
 # optional: generate coverage report (requires gcov/gcovr)
 conan coverage . --build-folder build-debug --cov-path coverage/ --theme github.dark-green
@@ -72,29 +78,13 @@ conan coverage . --build-folder build-debug --cov-path coverage/ --theme github.
 CONAN_HOME=$(pwd)/conan PYTHONPATH=$(pwd) conan doc --build-folder build-debug --sphinx-output docs/build/sphinx
 ```
 
-`conan build` automatically invokes `ctest` when tests are enabled, so the pipeline stays in sync with the CMake setup. To clean everything, remove the `build/` directory (`rm -rf build`) and deactivate/delete the virtual environment when you’re done.
+Unit tests exclude the performance harnesses unless you explicitly request them. Use `conan test .`
+for the standard suites, add `-o run_performance_tests=True` to append the performance harnesses
+afterward (ctest runs with `-j 12`), or invoke `ctest -L performance` directly if you only want
+the performance suites. To clean everything, remove the `build/` directory (`rm -rf build`)
+and deactivate/delete the virtual environment when you’re done.
 
 > **Note:** If you already have GoogleTest installed system-wide (e.g., via Homebrew), the build will use that installation. Otherwise, Conan will fetch and build `gtest` from ConanCenter (pass `--build gtest` if a binary isn’t available for your platform).
-
-### DLX Search Performance Suite
-
-The `dlx_performance_tests` target now drives the core `search` routine through multiple tiers of synthetic matrices: 1 000/10 000/100 000/1 000 000-column covers tested twice, first with digit-count-sized column groups and two variants per group, then with extra groups and three variants per group to amplify branching. The suite runs the individual cases in parallel up to the host’s hardware concurrency so every CPU core contributes. Invoke it with `ctest -R dlx_performance_tests` (or `./build/test_dlx_performance`) and it writes consolidated timing/solution metrics to `dlx_search_performance.csv` inside the build directory on success.
-
-## Tests
-
-The performance harness (`tests/test_dlx_performance.cpp`) constructs its matrices directly in memory to avoid the DLXB row-size limits. Each `PerformanceParam` entry specifies:
-
-- The number of constraint columns.
-- How many contiguous column groups to create (either the base-10 digit heuristic or a larger custom value to deepen recursion).
-- How many identical option rows (“variants”) to emit per group.
-
-For every case the generator:
-
-- Splits the column range into evenly sized groups and builds rows that only touch the columns within their group, ensuring disjoint coverage.
-- Duplicates each group row `variants_per_group` times, so the solver must pick exactly one row per group and yields `variants_per_group^group_count` predictable solutions.
-- Links nodes with the same spacer wiring used by `Core::generateMatrixBinaryImpl`, preserving the live matrix structure.
-
-Cases are executed in parallel across the available CPU cores, with deterministic validation of the expected solution counts before timing data is recorded. Once all permutations succeed, `dlx_search_performance.csv` is emitted in the build directory with columns/groups/variants/solutions/duration for every run. This combination of param-driven matrices and strict validation makes the suite a reliable sentinel for regressions in `search`.
 
 #### Conan Configuration
 
@@ -110,10 +100,16 @@ This copies `conan/remotes.json`, `conan/profiles/default`, and the custom comma
 
 ### Building
 
-Within the cloned repository's main folder `/your_path/DLX`, you can execute the following commands to build the necessary binaries (Debug profile recommended for coverage flags):
+Within the cloned repository's main folder `/your_path/DLX`, you can execute the following commands to build the necessary binaries (Debug profile recommended for coverage flags) and run the tests from the existing `build/` tree:
 
 ```bash
 conan install . && conan build . -s build_type=Debug
+
+# run unit tests only
+conan test . -s build_type=Debug
+
+# run all unit + performance tests (ctest -j12)
+conan test . -s build_type=Debug -o run_performance_tests=True
 ```
 
 To collect code coverage, keep building in `Debug` mode and leverage the custom command:
@@ -134,17 +130,17 @@ The `sudoku_encoder` application takes a sudoku problem file and converts the pr
 ./sudoku_encoder <problem_file> [cover_output_path]
 ```
 
-If `cover_output_path` is omitted or set to `-`, the cover stream is written to stdout so it can be piped directly into `dlx`. All `sudoku_test*.txt` files under the `tests/` directory can be used as encoder input. Writing the binary stream to disk looks like:
+If `cover_output_path` is omitted or set to `-`, the cover stream is written to stdout so it can be piped directly into `dlx`. All `sudoku_test*.txt` files under `tests/sudoku_tests/` can be used as encoder input. Writing the binary stream to disk looks like:
 
 ```bash
-./sudoku_encoder sudoku_test.txt sudoku_cover.bin
+./sudoku_encoder tests/sudoku_tests/sudoku_test.txt sudoku_cover.bin
 ```
 
 Use the same `-` shorthand to read puzzles from stdin (e.g., `cat puzzle.txt | ./sudoku_encoder - -`).
 
 ##### Generating your own Sudoku Input File
 
-If you would like to put in your own solvable sudoku problem into the pipeline, you can create a file of the below format. This example is `sudoku_test3.txt` in the `tests/` directory:
+If you would like to put in your own solvable sudoku problem into the pipeline, you can create a file of the below format. This example is `sudoku_test3.txt` in the `tests/sudoku_tests/` directory:
 
 ```
 200301004
@@ -215,19 +211,19 @@ The `sudoku_decoder` application takes the original sudoku problem file plus the
 Omit `solution_file` or `answer_file` (or pass `-`) to stream stdin/stdout respectively. A typical invocation looks like:
 
 ```bash
-./sudoku_decoder sudoku_test.txt dlx_solution_output.bin sudoku_solution.txt
+./sudoku_decoder tests/sudoku_tests/sudoku_test.txt dlx_solution_output.bin tests/sudoku_example/sudoku_solution.txt
 ```
 
-The `sudoku_test.txt` file under `tests/` is an example puzzle, and `sudoku_solution.txt` contains the expected solved grid.
+The `sudoku_test.txt` file under `tests/sudoku_tests/` is an example puzzle, and `tests/sudoku_example/sudoku_solution.txt` contains the expected solved grid.
 
 #### End-to-End Pipeline Example
 
 With the streaming sink in place, the full Sudoku workflow can be chained without temporary files:
 
 ```bash
-./build/sudoku_encoder tests/sudoku_test.txt \
+./build/sudoku_encoder tests/sudoku_tests/sudoku_test.txt \
   | ./build/dlx \
-  | ./build/sudoku_decoder tests/sudoku_test.txt \
+  | ./build/sudoku_decoder tests/sudoku_tests/sudoku_test.txt \
   > answers
 ```
 
@@ -311,6 +307,88 @@ The following diagram highlights the byte layout of the DLXB and DLXS sections (
 ![DLX binary layout](imgs/dlx_binary_layout.svg)
 
 For a higher fidelity look at how a specific DLXB/DLXS frame maps into contiguous 32-bit words (with per-field legends), review the diagrams above in their respective sections.
+
+## Tests
+
+### Unit Test Suites
+
+#### `test_sudoku_encoder`
+Exercises the Sudoku encoder library by converting canonical `tests/sudoku_tests/*.txt` puzzles into DLXB covers and validating that the generated binary layouts contain the expected number of rows, column headers, and candidate wires. These tests catch regressions in constraint generation (prefilled digits, row counts, column indices).
+
+#### `test_sudoku_decoder`
+Feeds known DLXS solution rows plus the original puzzle into the decoder and verifies that the emitted text grids match `tests/sudoku_example/sudoku_solution.txt`. Failures surface deserialization errors or solution-to-grid mapping bugs.
+
+#### `test_sudoku_pipeline`
+Runs the full encoder → solver → decoder pipeline using the compiled binaries (no test doubles). Each run writes an answers file and compares it to the expected text solution to guarantee CLI wiring and streaming flags still work.
+
+#### `test_dlx_binary`
+Focuses on the core DLX binary solver: it converts ASCII covers, runs search, and compares emitted rows against known solution sets. It also round-trips DLXS rows through the binary writer/reader helpers to ensure serialization stability.
+
+#### `test_dlx_server`
+Boots the TCP server in-process and drives multiple client connections. The suite verifies that the request port accepts DLXB payloads, that every solution subscriber receives the same DLXS stream, and that connections survive multiple sequential problems.
+
+#### `test_solution_sink`
+Validates the sink abstraction that DLX uses to stream solutions. Tests cover fan-out (one solution routed to many sinks), `ostream` formatting, and accumulation ordering so downstream integrations can trust the hook points.
+
+#### `test_matrix_dump`
+Loads the ASCII templates under `tests/generic_tests/` and ensures the matrix-dump utilities produce deterministic, human-readable layouts. This guards against inadvertent formatting changes that would break tooling which consumes the dumps.
+
+#### `test_dlx_search_performance` (unit wrapper)
+Although the name mentions performance, the executable also provides basic verification that the synthetic matrix generator accepts the current YAML config. It runs lightweight cases whenever unit tests are executed, failing fast if the config references invalid fields.
+
+### Performance Test Suites
+
+Performance suites are opt-in (`conan test . -o run_performance_tests=True`) and are labeled `performance` in CTest. They run after the unit suites complete.
+
+#### `test_dlx_search_performance`
+This harness constructs the param-driven matrices defined in `tests/config/performance_config.yaml`. Each case specifies column counts, group counts, and variants per group. The generator:
+
+- Splits the column range into evenly sized groups so the solver explores disjoint sets.
+- Emits `variants_per_group` identical rows per group, yielding a predictable search tree with `variants_per_group^group_count` solutions.
+- Links nodes exactly like `Core::generateMatrixBinaryImpl`, ensuring parity with production wiring.
+
+Cases fan out across hardware threads, and each successful run appends a row to `tests/performance/dlx_search_performance.csv` (columns/groups/variants/solutions/duration). Any mismatch in expected solution counts or timeouts will fail the suite, catching regressions in search pruning or matrix generation.
+
+#### `test_dlx_network_performance`
+Drives the TCP server end-to-end while issuing bursts of Sudoku requests to measure throughput. The YAML config’s `network_performance` block controls the DLXB problem file, request rate, burst sizing, and duration. Each test logs per-second solution counts and latencies to `tests/performance/dlx_network_performance.csv`, highlighting regressions in concurrency control, rate limiting, or socket handling.
+
+#### `performance_config.yaml`
+Both performance suites are driven by `tests/config/performance_config.yaml` (an example lives beside it). By default the loader expects that relative path; set the `DLX_PERF_CONFIG` environment variable to point at an alternate absolute or relative location (relative paths are resolved against the repository root via `DLX_SOURCE_DIR`). If the file cannot be read the suites stay disabled.
+
+The document uses this shape:
+
+```yaml
+tests:
+  search_performance:
+    enabled: false
+    report_path: tests/performance/dlx_search_performance.csv
+    cases:
+      - column_count: 1000
+        group_count: 3
+        variants_per_group: 2
+  network_performance:
+    enabled: false
+    duration_seconds: 10
+    request_clients: 1
+    solution_clients: 1
+    target_solution_rate: 1000
+    problem_file: tests/sudoku_example/sudoku_cover.txt
+    report_path: tests/performance/dlx_network_throughput.csv
+```
+
+Field reference:
+
+- `tests.search_performance.enabled` — turn the DLX search benchmarks on/off. When `true` provide at least one `cases[]` entry, each containing `column_count`, `group_count`, and `variants_per_group` (positive integers). If omitted, the built-in defaults from `performance_test_config.h` are used.
+- `tests.search_performance.report_path` — CSV destination for aggregated timings; defaults to `tests/performance/dlx_search_performance.csv`.
+- `tests.search_performance.cases[]` — describes the matrices to instantiate. Each case is required to specify `column_count`, `group_count`, and `variants_per_group`.
+- `tests.network_performance.enabled` — enables the network throughput harness. When `true`, `problem_file` must point at a DLXB cover (usually `tests/sudoku_example/sudoku_cover.txt` or a custom path).
+- `tests.network_performance.duration_seconds` — how long to run the benchmark (per configuration) before collecting stats.
+- `tests.network_performance.request_clients` / `solution_clients` — number of concurrent producer threads and subscriber sockets to spawn.
+- `tests.network_performance.target_solution_rate` — approximate solutions-per-second goal used to tune the throttling controller.
+- `tests.network_performance.problem_file` — DLXB payload sent to the TCP server (required when enabled).
+- `tests.network_performance.report_path` — CSV destination for throughput samples; defaults to `tests/performance/dlx_network_throughput.csv`.
+
+You may copy the `tests/config/performance_config.yaml` into your workspace and tweak the blocks above, or point `DLX_PERF_CONFIG` at a per-user file to avoid modifying the repository defaults.
 
 ### Documentation
 

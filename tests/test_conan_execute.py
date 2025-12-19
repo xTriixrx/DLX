@@ -5,9 +5,9 @@ import subprocess
 
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-EXPECTED_TEXT_SOLUTION = os.path.join(REPO_ROOT, "tests", "sudoku_solution.txt")
-PUZZLE_A = os.path.join("tests", "sudoku_test.txt")
-PUZZLE_B = os.path.join("tests", "sudoku_test4.txt")
+EXPECTED_TEXT_SOLUTION = os.path.join(REPO_ROOT, "tests", "sudoku_example", "sudoku_solution.txt")
+PUZZLE_A = os.path.join("tests", "sudoku_tests", "sudoku_test.txt")
+PUZZLE_B = os.path.join("tests", "sudoku_tests", "sudoku_test4.txt")
 EXT_SRC_DIR = os.path.join(REPO_ROOT, "conan", "extensions", "commands")
 LOCAL_CONAN_HOME = os.path.join(REPO_ROOT, "build", "conan_home_test")
 EXT_DST_DIR = os.path.join(LOCAL_CONAN_HOME, "extensions", "commands")

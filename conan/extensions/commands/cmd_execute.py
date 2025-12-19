@@ -155,14 +155,14 @@ def _split_pipeline_invocations(tokens: List[str]) -> List[Tuple[str, List[str]]
 def execute(conan_api, parser, *args):
     """
     Execute one or more pre-defined pipelines. Example:
-      conan execute sudoku --puzzle tests/sudoku_test.txt --answers solved.txt
+      conan execute sudoku --puzzle tests/sudoku_tests/sudoku_test.txt --answers solved.txt
     Multiple pipelines can be chained:
       conan execute sudoku --puzzle tests/a.txt sudoku --puzzle tests/b.txt --answers b.txt
     """
     parser.add_argument(
         "pipeline_args",
         nargs=argparse.REMAINDER,
-        help="Pipeline invocation pairs, e.g. 'sudoku --puzzle tests/sudoku_test.txt --answers out.txt'",
+        help="Pipeline invocation pairs, e.g. 'sudoku --puzzle tests/sudoku_tests/sudoku_test.txt --answers out.txt'",
     )
     ns = parser.parse_args(*args)
 

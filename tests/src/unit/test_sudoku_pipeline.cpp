@@ -36,9 +36,9 @@ TEST(SudokuPipelineTest, BinaryPipelineProducesAnswersFile)
     std::remove(answers_path.c_str());
 
     const std::string pipeline =
-        "build/sudoku_encoder tests/sudoku_test.txt | "
+        "build/sudoku_encoder tests/sudoku_tests/sudoku_test.txt | "
         "build/dlx | "
-        "build/sudoku_decoder tests/sudoku_test.txt > " +
+        "build/sudoku_decoder tests/sudoku_tests/sudoku_test.txt > " +
         answers_path;
     run_pipeline_and_expect_success(pipeline);
 
@@ -46,7 +46,7 @@ TEST(SudokuPipelineTest, BinaryPipelineProducesAnswersFile)
     ASSERT_FALSE(actual.empty());
 
     const std::string expected =
-        read_file_to_string("tests/sudoku_solution.txt");
+        read_file_to_string("tests/sudoku_example/sudoku_solution.txt");
     EXPECT_EQ(actual, expected);
 
     std::remove(answers_path.c_str());

@@ -1,10 +1,12 @@
 build/
-docs/build/
-coverage/
-obj/
 plans/
+coverage/
+docs/build/
+tests/reports/
 .DS_Store
 docs/sphinx/_ext/
 scheduler-rs/target/
 scheduler-rs/Cargo.lock
+conan/.conan.db
+conan/p/
 conan/extensions/commands/__pycache__/

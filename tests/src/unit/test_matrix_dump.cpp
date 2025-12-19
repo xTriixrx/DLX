@@ -10,7 +10,7 @@ namespace
 
 TEST(MatrixDumpTest, GeneratesDeterministicLayout)
 {
-    FILE* cover = fopen("tests/test.txt", "r");
+    FILE* cover = fopen("tests/generic_tests/test.txt", "r");
     ASSERT_NE(cover, nullptr);
 
     int itemCount = dlx::text::getItemCount(cover);

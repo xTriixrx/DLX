@@ -99,7 +99,7 @@ TEST(SudokuDecoderTest, ReconstructsBinarySolution)
     ASSERT_NE(output_fd, -1);
     close(output_fd);
 
-    int status = decode_sudoku_solution("tests/sudoku_test.txt", binary_template, output_template);
+    int status = decode_sudoku_solution("tests/sudoku_tests/sudoku_test.txt", binary_template, output_template);
     ASSERT_EQ(status, 0);
 
     std::string buffer;

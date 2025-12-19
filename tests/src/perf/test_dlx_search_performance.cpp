@@ -3,24 +3,26 @@
 #include <cstdint>
 #include <cstdlib>
 #include <fstream>
+#include <filesystem>
 #include <iomanip>
 #include <ios>
 #include <limits>
 #include <mutex>
 #include <string>
+#include <system_error>
 #include <thread>
 #include <utility>
 #include <vector>
 #include "core/dlx.h"
 #include "core/matrix.h"
 #include "core/solution_sink.h"
+#include "performance_test_config.h"
 #include <gtest/gtest.h>
 
 namespace
 {
 
 constexpr uint32_t kDefaultVariantsPerGroup = 2;
-constexpr const char kReportPath[] = "dlx_search_performance.csv";
 
 /**
  * Owning bundle for the matrix allocation returned by
@@ -38,6 +40,10 @@ struct SyntheticMatrix
 /**
  * Captures the statistics for a single performance case that will be appended
  * to the CSV report when every test completes successfully.
+ *
+ * Individual performance parameters (column count, group count, variants per
+ * group) are supplied via PerformanceTestConfig::search_cases so the suite runs
+ * whatever matrix mix is described in performance_config.yaml.
  */
 struct PerformanceRecord
 {
@@ -48,16 +54,7 @@ struct PerformanceRecord
     double duration_ms;
 };
 
-/**
- * Definition of a single performance case: column count plus the grouping
- * configuration used to generate synthetic rows.
- */
-struct PerformanceParam
-{
-    uint32_t column_count;
-    uint32_t group_count;
-    uint32_t variants_per_group;
-};
+using PerformanceParam = SearchPerformanceCase;
 
 /**
  * Result container used by the worker threads to communicate whether a case
@@ -176,6 +173,13 @@ public:
             return;
         }
 
+        std::filesystem::path report_path(path);
+        if (!report_path.parent_path().empty())
+        {
+            std::error_code ec;
+            std::filesystem::create_directories(report_path.parent_path(), ec);
+        }
+
         std::ofstream file(path, std::ios::out | std::ios::trunc);
         if (!file.is_open())
         {
@@ -249,10 +253,11 @@ protected:
      */
     static void TearDownTestSuite()
     {
+        const PerformanceTestConfig& config = GetPerformanceTestConfig();
         if (::testing::UnitTest::GetInstance()->Passed())
         {
             // Only emit the CSV when all cases succeeded.
-            PerformanceReport::instance().write_csv(kReportPath);
+            PerformanceReport::instance().write_csv(config.search_report_path);
         }
         else
         {
@@ -693,19 +698,22 @@ bool run_performance_case(const PerformanceParam& param,
     return true;
 }
 
-constexpr PerformanceParam kPerformanceParams[] = {
-    {1000, 3, 2},
-    {10000, 4, 2},
-    {100000, 5, 2},
-    {1000000, 6, 2},
-    {1000, 5, 3},
-    {10000, 6, 3},
-    {100000, 7, 3},
-};
-
 TEST_F(DlxSearchPerformanceTest, MeasuresSearchScalingParallel)
 {
-    constexpr size_t kCaseCount = sizeof(kPerformanceParams) / sizeof(kPerformanceParams[0]);
+    const PerformanceTestConfig& config = GetPerformanceTestConfig();
+    if (!config.search_performance_enabled)
+    {
+        GTEST_SKIP() << "Search performance tests disabled. Provide "
+                     << config.source_path
+                     << " with tests.search_performance.enabled: true to enable this suite.";
+    }
+
+    const auto& params = config.search_cases;
+    ASSERT_FALSE(params.empty()) << "No search performance cases configured. "
+                                 << "Provide tests.search_performance.cases entries in "
+                                 << config.source_path;
+
+    const size_t kCaseCount = params.size();
     
     // Pre-allocate slots for each worker to write into.
     std::vector<CaseResult> results(kCaseCount);
@@ -733,7 +741,7 @@ TEST_F(DlxSearchPerformanceTest, MeasuresSearchScalingParallel)
             }
 
             CaseResult result;
-            result.param = kPerformanceParams[index];
+            result.param = params[index];
             result.success = run_performance_case(result.param, &result.record, &result.error);
             results[index] = std::move(result); // Publish outcome back to the main thread.
         }

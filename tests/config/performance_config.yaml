@@ -1,0 +1,35 @@
+tests:
+  search_performance:
+    enabled: true
+    report_path: tests/reports/dlx_search_performance.csv
+    cases:
+      - column_count: 1000
+        group_count: 3
+        variants_per_group: 2
+      - column_count: 10000
+        group_count: 4
+        variants_per_group: 2
+      - column_count: 100000
+        group_count: 5
+        variants_per_group: 2
+      - column_count: 1000000
+        group_count: 6
+        variants_per_group: 2
+      - column_count: 1000
+        group_count: 5
+        variants_per_group: 3
+      - column_count: 10000
+        group_count: 6
+        variants_per_group: 3
+      - column_count: 100000
+        group_count: 7
+        variants_per_group: 3
+
+  network_performance:
+    enabled: true
+    duration_seconds: 60
+    request_clients: 2
+    solution_clients: 1
+    target_solution_rate: 300
+    problem_file: tests/sudoku_example/sudoku_cover.txt
+    report_path: tests/reports/dlx_network_throughput.csv
