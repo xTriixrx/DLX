@@ -20,6 +20,8 @@
 #include <thread>
 #include <vector>
 
+namespace binary = dlx::binary;
+
 namespace {
 
 using namespace tcp_test_utils;
@@ -151,7 +153,7 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
             solution_fds[slot] = fd;
         }
         DescriptorInputStream stream(fd);
-        struct DlxSolutionRow row = {0};
+        binary::DlxSolutionRow row = {0};
         bool fatal_error = false;
         while (true)
         {
@@ -161,8 +163,8 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
                 break;
             }
 
-            struct DlxSolutionHeader header;
-            if (dlx_read_solution_header(stream, &header) != 0 || header.magic != DLX_SOLUTION_MAGIC)
+            binary::DlxSolutionHeader header;
+            if (binary::dlx_read_solution_header(stream, &header) != 0 || header.magic != DLX_SOLUTION_MAGIC)
             {
                 fatal_error = true;
                 stop_listeners.store(true, std::memory_order_relaxed);
@@ -171,7 +173,7 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
 
             while (true)
             {
-                int status = dlx_read_solution_row(stream, &row);
+                int status = binary::dlx_read_solution_row(stream, &row);
                 if (status != 1)
                 {
                     fatal_error = true;

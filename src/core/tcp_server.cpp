@@ -80,13 +80,13 @@ private:
 
 bool write_solution_header(std::ostream& stream, uint32_t column_count)
 {
-    struct DlxSolutionHeader header = {
+    binary::DlxSolutionHeader header = {
         .magic = DLX_SOLUTION_MAGIC,
         .version = DLX_BINARY_VERSION,
         .flags = 0,
         .column_count = column_count,
     };
-    if (dlx_write_solution_header(stream, &header) != 0)
+    if (binary::dlx_write_solution_header(stream, &header) != 0)
     {
         return false;
     }
@@ -329,7 +329,7 @@ void DlxTcpServer::process_problem_connection(int client_fd)
     char** solutions = NULL;
     int itemCount = 0;
     int optionCount = 0;
-    struct node* matrix = dlx_read_binary(cover_stream, &solutions, &itemCount, &optionCount);
+    struct node* matrix = binary::dlx_read_binary(cover_stream, &solutions, &itemCount, &optionCount);
     if (matrix == NULL)
     {
         return;
@@ -411,10 +411,10 @@ void DlxTcpServer::broadcast_solution_row(const uint32_t* row_ids, int level)
             continue;
         }
 
-        if (dlx_write_solution_row(*client->stream,
-                                   client->next_solution_id,
-                                   row_ids,
-                                   static_cast<uint16_t>(level))
+        if (binary::dlx_write_solution_row(*client->stream,
+                                           client->next_solution_id,
+                                           row_ids,
+                                           static_cast<uint16_t>(level))
             != 0)
         {
             client.reset();
@@ -438,7 +438,7 @@ void DlxTcpServer::broadcast_problem_complete()
             continue;
         }
 
-        if (dlx_write_solution_row(*client->stream, 0, nullptr, 0) != 0)
+        if (binary::dlx_write_solution_row(*client->stream, 0, nullptr, 0) != 0)
         {
             client.reset();
         }

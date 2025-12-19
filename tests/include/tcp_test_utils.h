@@ -20,6 +20,8 @@
 #include <unistd.h>
 #include <vector>
 
+namespace binary = dlx::binary;
+
 namespace tcp_test_utils {
 
 inline std::string ReadFileToString(const std::string& path)
@@ -171,8 +173,8 @@ private:
 
 inline std::vector<uint32_t> ReadProblemSolution(DescriptorInputStream& binary_stream)
 {
-    struct DlxSolutionHeader header;
-    if (dlx_read_solution_header(binary_stream, &header) != 0)
+    binary::DlxSolutionHeader header;
+    if (binary::dlx_read_solution_header(binary_stream, &header) != 0)
     {
         return {};
     }
@@ -181,13 +183,13 @@ inline std::vector<uint32_t> ReadProblemSolution(DescriptorInputStream& binary_s
         return {};
     }
 
-    struct DlxSolutionRow row = {0};
+    binary::DlxSolutionRow row = {0};
     std::vector<uint32_t> values;
     bool received_solution = false;
 
     while (true)
     {
-        int read_status = dlx_read_solution_row(binary_stream, &row);
+        int read_status = binary::dlx_read_solution_row(binary_stream, &row);
         if (read_status != 1)
         {
             break;

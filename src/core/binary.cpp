@@ -6,6 +6,8 @@
 #include <istream>
 #include <ostream>
 
+namespace dlx::binary {
+
 static int ensure_chunk_capacity(struct DlxRowChunk* chunk, uint16_t required);
 static int ensure_solution_capacity(struct DlxSolutionRow* row, uint16_t required);
 
@@ -425,3 +427,5 @@ struct node* dlx_read_binary(std::istream& input,
                                            item_count_out,
                                            option_count_out);
 }
+
+} // namespace dlx::binary

@@ -271,7 +271,7 @@ static int binary_row_handler(int row, int col, int digit, void* ctx)
     struct binary_writer_ctx* writer = static_cast<struct binary_writer_ctx*>(ctx);
     uint32_t indices[4];
     build_column_indices(row, col, digit, indices);
-    if (dlx_write_row_chunk(*writer->output, writer->next_row_id, indices, 4) != 0)
+    if (dlx::binary::dlx_write_row_chunk(*writer->output, writer->next_row_id, indices, 4) != 0)
     {
         return 1;
     }
@@ -286,7 +286,7 @@ static int write_binary_cover(std::ostream& output,
                               const bool col_used[GRID_SIZE][DIGIT_COUNT + 1],
                               const bool box_used[GRID_SIZE][DIGIT_COUNT + 1])
 {
-    struct DlxCoverHeader header = {
+    dlx::binary::DlxCoverHeader header = {
         .magic = DLX_COVER_MAGIC,
         .version = DLX_BINARY_VERSION,
         .flags = 0,
@@ -294,7 +294,7 @@ static int write_binary_cover(std::ostream& output,
         .row_count = 0,
     };
 
-    if (dlx_write_cover_header(output, &header) != 0)
+    if (dlx::binary::dlx_write_cover_header(output, &header) != 0)
     {
         return 1;
     }

@@ -6,6 +6,8 @@
 #include <ostream>
 #include "core/dlx.h"
 
+namespace dlx::binary {
+
 /** @brief Magic constant that prefixes serialized cover headers (ASCII 'DLXB'). */
 #define DLX_COVER_MAGIC 0x444C5842u /* 'DLXB' */
 
@@ -81,5 +83,7 @@ int dlx_write_solution_row(std::ostream& output,
 // Free API
 void dlx_free_solution_row(struct DlxSolutionRow* row);
 void dlx_free_row_chunk(struct DlxRowChunk* chunk);
+
+} // namespace dlx::binary
 
 #endif

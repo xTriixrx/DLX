@@ -124,61 +124,61 @@ Binary Interface Helpers
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_write_cover_header(std::ostream& output, const DlxCoverHeader* header);
+   int dlx::binary::dlx_write_cover_header(std::ostream& output, const DlxCoverHeader* header);
 
-.. doxygenfunction:: dlx_write_cover_header
+.. doxygenfunction:: dlx::binary::dlx_write_cover_header
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_read_cover_header(std::istream& input, DlxCoverHeader* header);
+   int dlx::binary::dlx_read_cover_header(std::istream& input, DlxCoverHeader* header);
 
-.. doxygenfunction:: dlx_read_cover_header
+.. doxygenfunction:: dlx::binary::dlx_read_cover_header
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_write_row_chunk(std::ostream& output, uint32_t row_id, const uint32_t* columns, uint16_t column_count);
+   int dlx::binary::dlx_write_row_chunk(std::ostream& output, uint32_t row_id, const uint32_t* columns, uint16_t column_count);
 
-.. doxygenfunction:: dlx_write_row_chunk
+.. doxygenfunction:: dlx::binary::dlx_write_row_chunk
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_read_row_chunk(std::istream& input, DlxRowChunk* chunk);
+   int dlx::binary::dlx_read_row_chunk(std::istream& input, DlxRowChunk* chunk);
 
-.. doxygenfunction:: dlx_read_row_chunk
+.. doxygenfunction:: dlx::binary::dlx_read_row_chunk
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   void dlx_free_row_chunk(DlxRowChunk* chunk);
+   void dlx::binary::dlx_free_row_chunk(DlxRowChunk* chunk);
 
-.. doxygenfunction:: dlx_free_row_chunk
+.. doxygenfunction:: dlx::binary::dlx_free_row_chunk
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_write_solution_header(std::ostream& output, const DlxSolutionHeader* header);
+   int dlx::binary::dlx_write_solution_header(std::ostream& output, const DlxSolutionHeader* header);
 
-.. doxygenfunction:: dlx_write_solution_header
+.. doxygenfunction:: dlx::binary::dlx_write_solution_header
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_read_solution_header(std::istream& input, DlxSolutionHeader* header);
+   int dlx::binary::dlx_read_solution_header(std::istream& input, DlxSolutionHeader* header);
 
 Streaming Interfaces
 --------------------
@@ -198,43 +198,43 @@ Streaming Interfaces
    :project: dlx
    :members:
 
-.. doxygenfunction:: dlx_read_solution_header
+.. doxygenfunction:: dlx::binary::dlx_read_solution_header
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_write_solution_row(std::ostream& output, uint32_t solution_id, const uint32_t* row_indices, uint16_t row_count);
+   int dlx::binary::dlx_write_solution_row(std::ostream& output, uint32_t solution_id, const uint32_t* row_indices, uint16_t row_count);
 
-.. doxygenfunction:: dlx_write_solution_row
+.. doxygenfunction:: dlx::binary::dlx_write_solution_row
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx_read_solution_row(std::istream& input, DlxSolutionRow* row);
+   int dlx::binary::dlx_read_solution_row(std::istream& input, DlxSolutionRow* row);
 
-.. doxygenfunction:: dlx_read_solution_row
+.. doxygenfunction:: dlx::binary::dlx_read_solution_row
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   void dlx_free_solution_row(DlxSolutionRow* row);
+   void dlx::binary::dlx_free_solution_row(DlxSolutionRow* row);
 
-.. doxygenfunction:: dlx_free_solution_row
+.. doxygenfunction:: dlx::binary::dlx_free_solution_row
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   struct node* dlx_read_binary(std::istream& input, char*** solutions_out, int* item_count_out, int* option_count_out);
+   struct node* dlx::binary::dlx_read_binary(std::istream& input, char*** solutions_out, int* item_count_out, int* option_count_out);
 
-.. doxygenfunction:: dlx_read_binary
+.. doxygenfunction:: dlx::binary::dlx_read_binary
    :project: dlx
 
 

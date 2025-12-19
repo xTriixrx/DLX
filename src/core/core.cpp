@@ -72,10 +72,10 @@ void SolutionOutput::emit_binary_row(const uint32_t* row_ids, int level)
         return;
     }
 
-    if (dlx_write_solution_row(*binary_stream,
-                               next_solution_id,
-                               row_ids,
-                               static_cast<uint16_t>(level)) != 0)
+    if (binary::dlx_write_solution_row(*binary_stream,
+                                       next_solution_id,
+                                       row_ids,
+                                       static_cast<uint16_t>(level)) != 0)
     {
         fprintf(stderr, "Failed to write binary solution row\n");
         return;
@@ -90,14 +90,14 @@ void SolutionOutput::emit_binary_row(const uint32_t* row_ids, int level)
 
 int Core::dlx_enable_binary_solution_output(SolutionOutput& output_ctx, std::ostream& output, uint32_t column_count)
 {
-    struct DlxSolutionHeader header = {
+    binary::DlxSolutionHeader header = {
         .magic = DLX_SOLUTION_MAGIC,
         .version = DLX_BINARY_VERSION,
         .flags = 0,
         .column_count = column_count,
     };
 
-    if (dlx_write_solution_header(output, &header) != 0)
+    if (binary::dlx_write_solution_header(output, &header) != 0)
     {
         fprintf(stderr, "Unable to write DLX solution header\n");
         return -1;
@@ -410,7 +410,7 @@ struct node* Core::pickItem(struct node* head)
 }
 
 struct node* Core::generateMatrixBinaryImpl(std::istream& input,
-                                            const struct DlxCoverHeader& header,
+                                            const struct binary::DlxCoverHeader& header,
                                             char*** solutions_out,
                                             int* item_count_out,
                                             int* option_count_out)
@@ -438,17 +438,17 @@ struct node* Core::generateMatrixBinaryImpl(std::istream& input,
     rows.reserve(header.row_count);
 
     size_t total_entries = 0;
-    struct DlxRowChunk chunk = {0};
+    binary::DlxRowChunk chunk = {0};
     while (true)
     {
-        int status = dlx_read_row_chunk(input, &chunk);
+        int status = binary::dlx_read_row_chunk(input, &chunk);
         if (status == 0)
         {
             break;
         }
         if (status == -1)
         {
-            dlx_free_row_chunk(&chunk);
+            binary::dlx_free_row_chunk(&chunk);
             return nullptr;
         }
 
@@ -456,7 +456,7 @@ struct node* Core::generateMatrixBinaryImpl(std::istream& input,
         row.row_id = (chunk.row_id == 0) ? static_cast<uint32_t>(rows.size() + 1) : chunk.row_id;
         if (row.row_id > static_cast<uint32_t>(INT_MAX))
         {
-            dlx_free_row_chunk(&chunk);
+            binary::dlx_free_row_chunk(&chunk);
             return nullptr;
         }
 
@@ -473,14 +473,14 @@ struct node* Core::generateMatrixBinaryImpl(std::istream& input,
         }
         if (invalid_column)
         {
-            dlx_free_row_chunk(&chunk);
+            binary::dlx_free_row_chunk(&chunk);
             return nullptr;
         }
 
         total_entries += row.columns.size();
         rows.emplace_back(std::move(row));
     }
-    dlx_free_row_chunk(&chunk);
+    binary::dlx_free_row_chunk(&chunk);
 
     if (rows.size() > static_cast<size_t>(INT_MAX))
     {
@@ -606,7 +606,7 @@ struct node* Core::generateMatrixBinaryImpl(std::istream& input,
 }
 
 struct node* Core::generateMatrixBinary(std::istream& input,
-                                        const struct DlxCoverHeader& header,
+                                        const struct binary::DlxCoverHeader& header,
                                         char*** solutions_out,
                                         int* item_count_out,
                                         int* option_count_out)

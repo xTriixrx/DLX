@@ -8,7 +8,10 @@
 #include <stdint.h>
 #include "core/solution_sink.h"
 
+// Forward declaration of DlxCoverHeader
+namespace dlx::binary {
 struct DlxCoverHeader;
+} // namespace dlx::binary
 
 /**************************************************************************************************************
  *                                            DLX Application                                                 *
@@ -65,7 +68,7 @@ class Core
 {
 public:
     static struct node* generateMatrixBinary(std::istream& input,
-                                             const struct DlxCoverHeader& header,
+                                             const struct dlx::binary::DlxCoverHeader& header,
                                              char*** solutions_out,
                                              int* item_count_out,
                                              int* option_count_out);
@@ -84,7 +87,7 @@ private:
     static void printSolutions(char**, const uint32_t*, int, SolutionOutput&);
     static struct node* pickItem(struct node*);
     static struct node* generateMatrixBinaryImpl(std::istream& input,
-                                                 const struct DlxCoverHeader& header,
+                                                 const struct dlx::binary::DlxCoverHeader& header,
                                                  char*** solutions_out,
                                                  int* item_count_out,
                                                  int* option_count_out);

@@ -252,8 +252,8 @@ int decode_sudoku_solution(const char* puzzle_path,
         rows_stream = &rows_file;
     }
 
-    struct DlxSolutionHeader header;
-    if (dlx_read_solution_header(*rows_stream, &header) != 0)
+    dlx::binary::DlxSolutionHeader header;
+    if (dlx::binary::dlx_read_solution_header(*rows_stream, &header) != 0)
     {
         fprintf(stderr, "Failed to read solution header from %s\n", resolved_solution_path);
         status = 1;
@@ -265,10 +265,10 @@ int decode_sudoku_solution(const char* puzzle_path,
     }
     else
     {
-        struct DlxSolutionRow row = {0};
+        dlx::binary::DlxSolutionRow row = {0};
         while (status == 0)
         {
-            int read_status = dlx_read_solution_row(*rows_stream, &row);
+            int read_status = dlx::binary::dlx_read_solution_row(*rows_stream, &row);
             if (read_status == 0)
             {
                 break;
@@ -302,7 +302,7 @@ int decode_sudoku_solution(const char* puzzle_path,
             write_solution(output, solved_grid, solution_index++);
         }
 
-        dlx_free_solution_row(&row);
+        dlx::binary::dlx_free_solution_row(&row);
     }
 
     if (!read_from_stdin && rows_file.is_open())

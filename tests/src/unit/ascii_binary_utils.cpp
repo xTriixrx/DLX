@@ -5,6 +5,8 @@
 #include <sstream>
 #include <vector>
 
+namespace binary = dlx::binary;
+
 namespace
 {
 
@@ -89,7 +91,7 @@ int ascii_cover_to_binary_stream(const std::string& ascii_cover, std::ostream& o
         rows.emplace_back(std::move(columns));
     }
 
-    struct DlxCoverHeader header = {
+    binary::DlxCoverHeader header = {
         .magic = DLX_COVER_MAGIC,
         .version = DLX_BINARY_VERSION,
         .flags = 0,
@@ -97,7 +99,7 @@ int ascii_cover_to_binary_stream(const std::string& ascii_cover, std::ostream& o
         .row_count = static_cast<uint32_t>(rows.size()),
     };
 
-    if (dlx_write_cover_header(output, &header) != 0)
+    if (binary::dlx_write_cover_header(output, &header) != 0)
     {
         return -1;
     }
@@ -111,10 +113,10 @@ int ascii_cover_to_binary_stream(const std::string& ascii_cover, std::ostream& o
         }
 
         const uint32_t* column_ptr = columns.empty() ? nullptr : columns.data();
-        if (dlx_write_row_chunk(output,
-                                static_cast<uint32_t>(row_index + 1),
-                                column_ptr,
-                                static_cast<uint16_t>(columns.size()))
+        if (binary::dlx_write_row_chunk(output,
+                                        static_cast<uint32_t>(row_index + 1),
+                                        column_ptr,
+                                        static_cast<uint16_t>(columns.size()))
             != 0)
         {
             return -1;
@@ -131,24 +133,24 @@ int binary_solution_to_ascii(std::istream& input, std::string* ascii_output)
         return -1;
     }
 
-    struct DlxSolutionHeader header;
-    if (dlx_read_solution_header(input, &header) != 0)
+    binary::DlxSolutionHeader header;
+    if (binary::dlx_read_solution_header(input, &header) != 0)
     {
         return -1;
     }
 
     std::ostringstream builder;
-    struct DlxSolutionRow row = {0};
+    binary::DlxSolutionRow row = {0};
     while (true)
     {
-        int status = dlx_read_solution_row(input, &row);
+        int status = binary::dlx_read_solution_row(input, &row);
         if (status == 0)
         {
             break;
         }
         if (status == -1)
         {
-            dlx_free_solution_row(&row);
+            binary::dlx_free_solution_row(&row);
             return -1;
         }
 
@@ -159,7 +161,7 @@ int binary_solution_to_ascii(std::istream& input, std::string* ascii_output)
         }
     }
 
-    dlx_free_solution_row(&row);
+    binary::dlx_free_solution_row(&row);
     *ascii_output = builder.str();
     return 0;
 }

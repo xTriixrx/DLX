@@ -8,6 +8,8 @@
 #include <string.h>
 #include <unistd.h>
 
+namespace binary = dlx::binary;
+
 namespace
 {
 
@@ -81,15 +83,15 @@ TEST(SudokuDecoderTest, ReconstructsBinarySolution)
     std::ofstream binary_rows(binary_template, std::ios::binary);
     ASSERT_TRUE(binary_rows.is_open());
 
-    struct DlxSolutionHeader header = {
+    binary::DlxSolutionHeader header = {
         .magic = DLX_SOLUTION_MAGIC,
         .version = DLX_BINARY_VERSION,
         .flags = 0,
         .column_count = COLUMN_COUNT,
     };
 
-    ASSERT_EQ(dlx_write_solution_header(binary_rows, &header), 0);
-    ASSERT_EQ(dlx_write_solution_row(
+    ASSERT_EQ(binary::dlx_write_solution_header(binary_rows, &header), 0);
+    ASSERT_EQ(binary::dlx_write_solution_row(
                   binary_rows, 1, indices.data(), static_cast<uint16_t>(indices.size())),
               0);
     binary_rows.close();
