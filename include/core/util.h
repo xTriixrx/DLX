@@ -11,6 +11,8 @@
 
 #include "core/dlx.h"
 
+namespace dlx::util {
+
 struct CoverStream
 {
     std::istream* stream = nullptr;
@@ -135,5 +137,7 @@ struct OutputContext
         output = {};
     }
 };
+
+} // namespace dlx::util
 
 #endif

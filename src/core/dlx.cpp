@@ -16,6 +16,11 @@
 #include <unistd.h>
 #include <wchar.h>
 
+using dlx::util::CoverStream;
+using dlx::util::MatrixContext;
+using dlx::util::OutputContext;
+using dlx::util::SolutionBuffer;
+
 /**************************************************************************************************************
  *                                            DLX Application                                                 *
  *        DLX is a powerful backtracking, depth-first algorithm that solves exact cover problems.             *
