@@ -63,7 +63,7 @@ Then configure/build:
 
 ```bash
 # configure dependencies, then invoke the build (Debug profile recommended)
-conan install . && conan build . -s build_type=Debug
+conan install . && conan build . -s build_type=Debug && conan test .
 
 # run unit tests (performance suites excluded, uses binaries in ./build)
 conan test . -s build_type=Debug
@@ -83,6 +83,9 @@ for the standard suites, add `-o run_performance_tests=True` to append the perfo
 afterward (ctest runs with `-j 12`), or invoke `ctest -L performance` directly if you only want
 the performance suites. To clean everything, remove the `build/` directory (`rm -rf build`)
 and deactivate/delete the virtual environment when you’re done.
+
+The `conan test` command also runs `cargo test --workspace --all-targets` for the `scheduler-rs`
+workspace, covering unit and integration tests across all Rust crates.
 
 > **Note:** If you already have GoogleTest installed system-wide (e.g., via Homebrew), the build will use that installation. Otherwise, Conan will fetch and build `gtest` from ConanCenter (pass `--build gtest` if a binary isn’t available for your platform).
 
