@@ -92,6 +92,7 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
     struct BucketStats
     {
         std::atomic<uint64_t> submitted{0};
+        std::atomic<uint64_t> solve_started{0};
         std::atomic<uint64_t> completed{0};
         std::atomic<uint64_t> latency_sum{0};
         std::atomic<uint64_t> latency_count{0};
@@ -101,6 +102,7 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
     std::mutex submission_mutex;
     std::queue<std::chrono::steady_clock::time_point> submission_times;
     std::atomic<uint64_t> total_submitted{0};
+    std::atomic<uint64_t> total_started{0};
     std::atomic<uint64_t> total_completed{0};
 
     auto start_time = std::chrono::steady_clock::now();
@@ -109,6 +111,11 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
     auto record_submission = [&](const std::chrono::steady_clock::time_point& ts) {
         const size_t bucket = BucketForTimestamp(start_time, ts, bucket_count);
         buckets[bucket].submitted.fetch_add(1, std::memory_order_relaxed);
+    };
+
+    auto record_solve_start = [&](const std::chrono::steady_clock::time_point& ts) {
+        const size_t bucket = BucketForTimestamp(start_time, ts, bucket_count);
+        buckets[bucket].solve_started.fetch_add(1, std::memory_order_relaxed);
     };
 
     auto record_completion = [&](const std::chrono::steady_clock::time_point& ts, uint64_t latency_ns, bool include_latency) {
@@ -136,7 +143,7 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
         std::max<uint32_t>(std::max<uint32_t>(min_rate_target, configured_target), derived_capacity);
     const uint32_t initial_rate =
         std::clamp(configured_target, min_rate_target, max_rate_target);
-    const uint32_t min_rate_floor = std::max<uint32_t>(min_rate_target, std::max<uint32_t>(initial_rate / 4, 64u));
+    const uint32_t min_rate_floor = std::max<uint32_t>(min_rate_target, std::max<uint32_t>(initial_rate / 2, 128u));
     std::atomic<uint32_t> target_rate{initial_rate};
     const uint32_t max_inflight = std::max<uint32_t>(min_rate_target * 4, max_rate_target);
 
@@ -153,7 +160,6 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
             solution_fds[slot] = fd;
         }
         DescriptorInputStream stream(fd);
-        binary::DlxSolutionRow row = {0};
         bool fatal_error = false;
         while (true)
         {
@@ -164,93 +170,101 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
             }
 
             binary::DlxSolutionHeader header;
-            if (binary::dlx_read_solution_header(stream, &header) != 0 || header.magic != DLX_SOLUTION_MAGIC)
+            binary::DlxSolutionStreamReader reader(stream);
+            if (reader.read_header(&header) != 0 || header.magic != DLX_SOLUTION_MAGIC)
             {
                 fatal_error = true;
                 stop_listeners.store(true, std::memory_order_relaxed);
                 break;
             }
 
+            const auto solve_start_time = std::chrono::steady_clock::now();
+            record_solve_start(solve_start_time);
+            total_started.fetch_add(1, std::memory_order_relaxed);
+            if (outstanding.fetch_sub(1, std::memory_order_relaxed) > 0)
+            {
+                outstanding_cv.notify_one();
+            }
+
+            bool saw_terminator = false;
+            uint32_t solution_id = 0;
+            std::vector<uint32_t> row_indices;
             while (true)
             {
-                int status = binary::dlx_read_solution_row(stream, &row);
-                if (status != 1)
+                int status = reader.read_row(&solution_id, &row_indices);
+                if (status == 0)
+                {
+                    saw_terminator = true;
+                    break;
+                }
+                if (status == -1)
                 {
                     fatal_error = true;
                     stop_listeners.store(true, std::memory_order_relaxed);
                     break;
                 }
-                if (row.solution_id != 0 || row.entry_count != 0)
-                {
-                    continue;
-                }
-
-                const auto completion_time = std::chrono::steady_clock::now();
-                std::chrono::steady_clock::time_point submitted_at = completion_time;
-                bool have_submission = false;
-                {
-                    std::lock_guard<std::mutex> lock(submission_mutex);
-                    if (!submission_times.empty())
-                    {
-                        submitted_at = submission_times.front();
-                        submission_times.pop();
-                        have_submission = true;
-                    }
-                }
-
-                uint64_t latency_ns = 0;
-                if (have_submission)
-                {
-                    latency_ns = static_cast<uint64_t>(
-                        std::chrono::duration_cast<std::chrono::nanoseconds>(completion_time - submitted_at).count());
-                }
-
-                total_completed.fetch_add(1, std::memory_order_relaxed);
-                record_completion(completion_time, latency_ns, have_submission);
-                if (have_submission)
-                {
-                    const double latency_ms = static_cast<double>(latency_ns) / 1'000'000.0;
-                    auto adjust_target = [&](bool increase) {
-                        uint32_t current = target_rate.load(std::memory_order_relaxed);
-                        while (true)
-                        {
-                            const uint32_t delta = std::max<uint32_t>(1, current / 16);
-                            uint32_t desired = increase
-                                                   ? current + delta
-                                                   : (current > delta ? current - delta : min_rate_floor);
-                            desired = std::clamp(desired, min_rate_floor, max_rate_target);
-                            if (desired == current)
-                            {
-                                break;
-                            }
-                            if (target_rate.compare_exchange_weak(current, desired, std::memory_order_relaxed))
-                            {
-                                break;
-                            }
-                        }
-                    };
-
-                    if (latency_ms < 5.0)
-                    {
-                        adjust_target(true);
-                    }
-                    else if (latency_ms > 25.0)
-                    {
-                        adjust_target(false);
-                    }
-                }
-                outstanding.fetch_sub(1, std::memory_order_relaxed);
-                outstanding_cv.notify_one();
-                break; // Wait for the next header for the following problem.
             }
 
-            if (fatal_error)
+            if (fatal_error || !saw_terminator)
             {
                 break;
             }
-        }
 
-        dlx_free_solution_row(&row);
+            const auto completion_time = std::chrono::steady_clock::now();
+            std::chrono::steady_clock::time_point submitted_at = completion_time;
+            bool have_submission = false;
+            {
+                std::lock_guard<std::mutex> lock(submission_mutex);
+                if (!submission_times.empty())
+                {
+                    submitted_at = submission_times.front();
+                    submission_times.pop();
+                    have_submission = true;
+                }
+            }
+
+            uint64_t latency_ns = 0;
+            if (have_submission)
+            {
+                latency_ns = static_cast<uint64_t>(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(completion_time - submitted_at).count());
+            }
+
+            total_completed.fetch_add(1, std::memory_order_relaxed);
+            record_completion(completion_time, latency_ns, have_submission);
+            if (have_submission)
+            {
+                const double latency_ms = static_cast<double>(latency_ns) / 1'000'000.0;
+                auto adjust_target = [&](bool increase) {
+                    uint32_t current = target_rate.load(std::memory_order_relaxed);
+                    while (true)
+                    {
+                        const uint32_t delta = std::max<uint32_t>(1, current / 16);
+                        uint32_t desired = increase
+                                               ? current + delta
+                                               : (current > delta ? current - delta : min_rate_floor);
+                        desired = std::clamp(desired, min_rate_floor, max_rate_target);
+                        if (desired == current)
+                        {
+                            break;
+                        }
+                        if (target_rate.compare_exchange_weak(current, desired, std::memory_order_relaxed))
+                        {
+                            break;
+                        }
+                    }
+                };
+
+                if (latency_ms < 10.0)
+                {
+                    adjust_target(true);
+                }
+                else if (latency_ms > 35.0)
+                {
+                    adjust_target(false);
+                }
+            }
+        }
         int local_fd = -1;
         {
             std::lock_guard<std::mutex> lock(solution_fd_mutex);
@@ -271,7 +285,7 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
         listener_threads.emplace_back(solution_worker, i);
     }
 
-    auto submit_problem = [&]() -> bool {
+    auto submit_problem = [&](int fd) -> bool {
         if (stop_listeners.load(std::memory_order_relaxed))
         {
             return false;
@@ -283,9 +297,15 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
             return false;
         }
 
-        if (!SendProblem(server().request_port(), payload))
+        size_t offset = 0;
+        while (offset < payload.size())
         {
-            return false;
+            ssize_t written = send(fd, payload.data() + offset, payload.size() - offset, 0);
+            if (written <= 0)
+            {
+                return false;
+            }
+            offset += static_cast<size_t>(written);
         }
 
         const auto submission_time = std::chrono::steady_clock::now();
@@ -300,6 +320,12 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
     };
 
     auto request_worker = [&]() {
+        int fd = ConnectToPort(server().request_port());
+        if (fd < 0)
+        {
+            return;
+        }
+
         while (true)
         {
             if (stop_listeners.load(std::memory_order_relaxed))
@@ -341,11 +367,14 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
                 continue;
             }
 
-            if (!submit_problem())
+            if (!submit_problem(fd))
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
+
+        shutdown(fd, SHUT_WR);
+        close(fd);
     };
 
     const uint32_t request_clients = std::max<uint32_t>(1, config.network_request_clients);
@@ -399,7 +428,7 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
     }
     std::ofstream report(config.network_report_path, std::ios::out | std::ios::trunc);
     ASSERT_TRUE(report.is_open()) << "Unable to open report path " << config.network_report_path;
-    report << "Time Interval (s),Solution Rate,Average Solution Rate,Latency,Average Latency\n";
+    report << "Time Interval (s),Solve Rate,Solve Rate Avg,Solution Rate,Average Solution Rate,Latency,Average Latency\n";
 
     auto format_rate = [](double value, bool fractional) {
         std::ostringstream oss;
@@ -430,12 +459,15 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
     };
 
     uint64_t running_completed = 0;
+    uint64_t running_solve_started = 0;
     uint64_t running_latency_sum = 0;
     uint64_t running_latency_count = 0;
 
     for (size_t i = 0; i < bucket_count; ++i)
     {
+        const uint64_t started_this_second = buckets[i].solve_started.load(std::memory_order_relaxed);
         const uint64_t completed_this_second = buckets[i].completed.load(std::memory_order_relaxed);
+        running_solve_started += started_this_second;
         running_completed += completed_this_second;
 
         const uint64_t latency_sum = buckets[i].latency_sum.load(std::memory_order_relaxed);
@@ -443,8 +475,11 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
         running_latency_sum += latency_sum;
         running_latency_count += latency_count;
 
-        const double instantaneous_rate = static_cast<double>(completed_this_second);
         const double elapsed_seconds = static_cast<double>(i + 1);
+        const double solve_rate = static_cast<double>(started_this_second);
+        const double solve_avg_rate =
+            elapsed_seconds > 0 ? static_cast<double>(running_solve_started) / elapsed_seconds : 0.0;
+        const double instantaneous_rate = static_cast<double>(completed_this_second);
         const double average_rate = elapsed_seconds > 0 ? static_cast<double>(running_completed) / elapsed_seconds : 0.0;
 
         const double bucket_latency_ms = latency_count > 0
@@ -456,6 +491,8 @@ TEST_F(DlxTcpNetworkPerformanceTest, MeasuresEndToEndThroughput)
                                               : 0.0;
 
         report << (i + 1) << ','
+               << format_rate(solve_rate, false) << ','
+               << format_rate(solve_avg_rate, true) << ','
                << format_rate(instantaneous_rate, false) << ','
                << format_rate(average_rate, true) << ','
                << format_latency(bucket_latency_ms, false) << ','

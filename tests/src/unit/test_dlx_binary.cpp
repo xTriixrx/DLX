@@ -4,6 +4,7 @@
 #include "ascii_binary_utils.h"
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <sstream>
@@ -40,7 +41,8 @@ void write_header_and_chunk(const char* path)
     std::ofstream file(path, std::ios::binary);
     ASSERT_TRUE(file.is_open());
 
-    binary::DlxCoverHeader header = {
+    binary::DlxProblem problem;
+    problem.header = {
         .magic = DLX_COVER_MAGIC,
         .version = DLX_BINARY_VERSION,
         .flags = 0x2,
@@ -48,13 +50,29 @@ void write_header_and_chunk(const char* path)
         .row_count = 2,
     };
 
-    ASSERT_EQ(binary::dlx_write_cover_header(file, &header), 0);
-
     uint32_t row1[] = {1, 5, 9};
     uint32_t row2[] = {0, 4, 8};
 
-    ASSERT_EQ(binary::dlx_write_row_chunk(file, 1, row1, 3), 0);
-    ASSERT_EQ(binary::dlx_write_row_chunk(file, 2, row2, 3), 0);
+    binary::DlxRowChunk chunk1 = {0};
+    chunk1.row_id = 1;
+    chunk1.entry_count = 3;
+    chunk1.capacity = 3;
+    chunk1.columns = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * 3));
+    ASSERT_NE(chunk1.columns, nullptr);
+    memcpy(chunk1.columns, row1, sizeof(row1));
+
+    binary::DlxRowChunk chunk2 = {0};
+    chunk2.row_id = 2;
+    chunk2.entry_count = 3;
+    chunk2.capacity = 3;
+    chunk2.columns = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * 3));
+    ASSERT_NE(chunk2.columns, nullptr);
+    memcpy(chunk2.columns, row2, sizeof(row2));
+
+    problem.rows.push_back(chunk1);
+    problem.rows.push_back(chunk2);
+
+    ASSERT_EQ(binary::dlx_write_problem(file, &problem), 0);
     file.close();
 }
 
@@ -70,34 +88,28 @@ TEST(DlxBinaryTest, RoundTrip)
     std::ifstream cover_stream(file_template, std::ios::binary);
     ASSERT_TRUE(cover_stream.is_open());
 
-    binary::DlxCoverHeader header;
-    ASSERT_EQ(binary::dlx_read_cover_header(cover_stream, &header), 0);
-    EXPECT_EQ(header.magic, DLX_COVER_MAGIC);
-    EXPECT_EQ(header.version, DLX_BINARY_VERSION);
-    EXPECT_EQ(header.flags, 0x2);
-    EXPECT_EQ(header.column_count, 10u);
-    EXPECT_EQ(header.row_count, 2u);
+    binary::DlxProblem problem;
+    ASSERT_EQ(binary::dlx_read_problem(cover_stream, &problem), 0);
+    EXPECT_EQ(problem.header.magic, DLX_COVER_MAGIC);
+    EXPECT_EQ(problem.header.version, DLX_BINARY_VERSION);
+    EXPECT_EQ(problem.header.flags, 0x2);
+    EXPECT_EQ(problem.header.column_count, 10u);
+    EXPECT_EQ(problem.header.row_count, 2u);
+    ASSERT_EQ(problem.rows.size(), 2u);
 
-    binary::DlxRowChunk chunk = {0};
-    int status = binary::dlx_read_row_chunk(cover_stream, &chunk);
-    ASSERT_EQ(status, 1);
-    EXPECT_EQ(chunk.row_id, 1u);
-    EXPECT_EQ(chunk.entry_count, 3);
-    EXPECT_EQ(chunk.columns[0], 1u);
-    EXPECT_EQ(chunk.columns[1], 5u);
-    EXPECT_EQ(chunk.columns[2], 9u);
+    const auto& chunk1 = problem.rows[0];
+    EXPECT_EQ(chunk1.row_id, 1u);
+    EXPECT_EQ(chunk1.entry_count, 3);
+    EXPECT_EQ(chunk1.columns[0], 1u);
+    EXPECT_EQ(chunk1.columns[1], 5u);
+    EXPECT_EQ(chunk1.columns[2], 9u);
 
-    status = binary::dlx_read_row_chunk(cover_stream, &chunk);
-    ASSERT_EQ(status, 1);
-    EXPECT_EQ(chunk.row_id, 2u);
-    EXPECT_EQ(chunk.entry_count, 3);
-    EXPECT_EQ(chunk.columns[0], 0u);
-    EXPECT_EQ(chunk.columns[1], 4u);
-    EXPECT_EQ(chunk.columns[2], 8u);
-
-    EXPECT_EQ(binary::dlx_read_row_chunk(cover_stream, &chunk), 0); // EOF
-
-    binary::dlx_free_row_chunk(&chunk);
+    const auto& chunk2 = problem.rows[1];
+    EXPECT_EQ(chunk2.row_id, 2u);
+    EXPECT_EQ(chunk2.entry_count, 3);
+    EXPECT_EQ(chunk2.columns[0], 0u);
+    EXPECT_EQ(chunk2.columns[1], 4u);
+    EXPECT_EQ(chunk2.columns[2], 8u);
     cover_stream.close();
     remove(file_template);
 }
@@ -141,41 +153,43 @@ TEST(DlxBinaryTest, SolutionRoundTrip)
     std::ofstream file(file_template, std::ios::binary);
     ASSERT_TRUE(file.is_open());
 
-    binary::DlxSolutionHeader header = {
+    binary::DlxSolution solution;
+    solution.header = {
         .magic = DLX_SOLUTION_MAGIC,
         .version = DLX_BINARY_VERSION,
         .flags = 0,
         .column_count = 10,
     };
 
-    ASSERT_EQ(binary::dlx_write_solution_header(file, &header), 0);
-
     uint32_t rows[] = {10, 20, 30, 40};
-    ASSERT_EQ(binary::dlx_write_solution_row(file, 7, rows, 4), 0);
+    binary::DlxSolutionRow row = {0};
+    row.solution_id = 7;
+    row.entry_count = 4;
+    row.capacity = 4;
+    row.row_indices = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * 4));
+    ASSERT_NE(row.row_indices, nullptr);
+    memcpy(row.row_indices, rows, sizeof(rows));
+
+    solution.rows.push_back(row);
+    ASSERT_EQ(binary::dlx_write_solution(file, &solution), 0);
     file.close();
 
     std::ifstream solution_stream(file_template, std::ios::binary);
     ASSERT_TRUE(solution_stream.is_open());
 
-    binary::DlxSolutionHeader read_header;
-    ASSERT_EQ(binary::dlx_read_solution_header(solution_stream, &read_header), 0);
-    EXPECT_EQ(read_header.magic, DLX_SOLUTION_MAGIC);
-    EXPECT_EQ(read_header.version, DLX_BINARY_VERSION);
-    EXPECT_EQ(read_header.flags, 0);
-    EXPECT_EQ(read_header.column_count, 10u);
-
-    binary::DlxSolutionRow row = {0};
-    ASSERT_EQ(binary::dlx_read_solution_row(solution_stream, &row), 1);
-    EXPECT_EQ(row.solution_id, 7u);
-    ASSERT_EQ(row.entry_count, 4);
-    for (int i = 0; i < row.entry_count; i++)
+    binary::DlxSolution read_solution;
+    ASSERT_EQ(binary::dlx_read_solution(solution_stream, &read_solution), 0);
+    EXPECT_EQ(read_solution.header.magic, DLX_SOLUTION_MAGIC);
+    EXPECT_EQ(read_solution.header.version, DLX_BINARY_VERSION);
+    EXPECT_EQ(read_solution.header.flags, 0);
+    EXPECT_EQ(read_solution.header.column_count, 10u);
+    ASSERT_EQ(read_solution.rows.size(), 1u);
+    EXPECT_EQ(read_solution.rows[0].solution_id, 7u);
+    ASSERT_EQ(read_solution.rows[0].entry_count, 4);
+    for (int i = 0; i < read_solution.rows[0].entry_count; i++)
     {
-        EXPECT_EQ(row.row_indices[i], rows[i]);
+        EXPECT_EQ(read_solution.rows[0].row_indices[i], rows[i]);
     }
-
-    EXPECT_EQ(binary::dlx_read_solution_row(solution_stream, &row), 0);
-
-    binary::dlx_free_solution_row(&row);
     solution_stream.close();
     remove(file_template);
 }
@@ -217,23 +231,19 @@ TEST(DlxBinaryTest, DlxSolvesFromBinaryCoverAndEmitsBinarySolutions)
 
     std::istringstream binary_stream(binary_output.str());
 
-    binary::DlxSolutionHeader solution_header;
-    ASSERT_EQ(binary::dlx_read_solution_header(binary_stream, &solution_header), 0);
-    EXPECT_EQ(solution_header.magic, DLX_SOLUTION_MAGIC);
-    EXPECT_EQ(solution_header.version, DLX_BINARY_VERSION);
-    EXPECT_EQ(solution_header.column_count, static_cast<uint32_t>(itemCount));
+    binary::DlxSolution solution;
+    ASSERT_EQ(binary::dlx_read_solution(binary_stream, &solution), 0);
+    EXPECT_EQ(solution.header.magic, DLX_SOLUTION_MAGIC);
+    EXPECT_EQ(solution.header.version, DLX_BINARY_VERSION);
+    EXPECT_EQ(solution.header.column_count, static_cast<uint32_t>(itemCount));
+    ASSERT_EQ(solution.rows.size(), 1u);
 
-    binary::DlxSolutionRow row = {0};
-    ASSERT_EQ(binary::dlx_read_solution_row(binary_stream, &row), 1);
     std::vector<uint32_t> expected_values = parse_row_list(kExpectedSudokuRows);
-    ASSERT_EQ(row.entry_count, expected_values.size());
+    ASSERT_EQ(solution.rows[0].entry_count, expected_values.size());
     for (size_t i = 0; i < expected_values.size(); i++)
     {
-        EXPECT_EQ(row.row_indices[i], expected_values[i]);
+        EXPECT_EQ(solution.rows[0].row_indices[i], expected_values[i]);
     }
-    EXPECT_EQ(binary::dlx_read_solution_row(binary_stream, &row), 0);
-
-    binary::dlx_free_solution_row(&row);
     free(row_ids);
     dlx::Core::freeMemory(matrix, solutions);
     remove(cover_template);

@@ -252,39 +252,21 @@ int decode_sudoku_solution(const char* puzzle_path,
         rows_stream = &rows_file;
     }
 
-    dlx::binary::DlxSolutionHeader header;
-    if (dlx::binary::dlx_read_solution_header(*rows_stream, &header) != 0)
+    dlx::binary::DlxSolution solution;
+    if (dlx::binary::dlx_read_solution(*rows_stream, &solution) != 0)
     {
-        fprintf(stderr, "Failed to read solution header from %s\n", resolved_solution_path);
+        fprintf(stderr, "Failed to read solution data from %s\n", resolved_solution_path);
         status = 1;
     }
-    else if (header.magic != DLX_SOLUTION_MAGIC)
+    else if (solution.header.magic != DLX_SOLUTION_MAGIC)
     {
         fprintf(stderr, "Invalid solution file magic\n");
         status = 1;
     }
     else
     {
-        dlx::binary::DlxSolutionRow row = {0};
-        while (status == 0)
+        for (const auto& row : solution.rows)
         {
-            int read_status = dlx::binary::dlx_read_solution_row(*rows_stream, &row);
-            if (read_status == 0)
-            {
-                break;
-            }
-            if (read_status == -1)
-            {
-                fprintf(stderr, "Corrupt solution row in %s\n", resolved_solution_path);
-                status = 1;
-                break;
-            }
-
-            if (row.solution_id == 0 && row.entry_count == 0)
-            {
-                break;
-            }
-
             if (apply_solution_indices(row.row_indices,
                                        row.entry_count,
                                        &vector,
@@ -301,8 +283,6 @@ int decode_sudoku_solution(const char* puzzle_path,
 
             write_solution(output, solved_grid, solution_index++);
         }
-
-        dlx::binary::dlx_free_solution_row(&row);
     }
 
     if (!read_from_stdin && rows_file.is_open())

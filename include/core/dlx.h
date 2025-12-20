@@ -8,9 +8,12 @@
 #include <stdint.h>
 #include "core/solution_sink.h"
 
-// Forward declaration of DlxCoverHeader
+// Forward declaration of binary types.
 namespace dlx::binary {
 struct DlxCoverHeader;
+struct DlxProblem;
+struct DlxRowChunk;
+class DlxSolutionStreamWriter;
 } // namespace dlx::binary
 
 /**************************************************************************************************************
@@ -52,6 +55,8 @@ struct SolutionOutput
     void* binary_context;
     uint32_t next_solution_id;
     uint32_t column_count;
+    std::vector<std::vector<uint32_t>> binary_rows;
+    dlx::binary::DlxSolutionStreamWriter* binary_writer;
 
     SolutionOutput()
         : sink(nullptr)
@@ -60,6 +65,8 @@ struct SolutionOutput
         , binary_context(nullptr)
         , next_solution_id(1)
         , column_count(0)
+        , binary_rows()
+        , binary_writer(nullptr)
     {}
     void emit_binary_row(const uint32_t* row_ids, int level);
 };
@@ -67,11 +74,15 @@ struct SolutionOutput
 class Core
 {
 public:
-    static struct node* generateMatrixBinary(std::istream& input,
-                                             const struct dlx::binary::DlxCoverHeader& header,
+    static struct node* generateMatrixBinary(struct dlx::binary::DlxProblem& problem,
                                              char*** solutions_out,
                                              int* item_count_out,
                                              int* option_count_out);
+    static struct node* generateMatrixBinaryFromRows(const struct dlx::binary::DlxCoverHeader& header,
+                                                     std::vector<dlx::binary::DlxRowChunk>& rows,
+                                                     char*** solutions_out,
+                                                     int* item_count_out,
+                                                     int* option_count_out);
     static void setMatrixDumpStream(std::ostream* stream);
     static void search(struct node*, int, char**, uint32_t*, SolutionOutput&);
     static void freeMemory(struct node*, char**);
@@ -86,8 +97,8 @@ private:
     static void uncover(struct node*);
     static void printSolutions(char**, const uint32_t*, int, SolutionOutput&);
     static struct node* pickItem(struct node*);
-    static struct node* generateMatrixBinaryImpl(std::istream& input,
-                                                 const struct dlx::binary::DlxCoverHeader& header,
+    static struct node* generateMatrixBinaryImpl(const struct dlx::binary::DlxCoverHeader& header,
+                                                 std::vector<dlx::binary::DlxRowChunk>& rows,
                                                  char*** solutions_out,
                                                  int* item_count_out,
                                                  int* option_count_out);

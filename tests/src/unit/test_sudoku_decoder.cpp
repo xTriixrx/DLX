@@ -2,6 +2,7 @@
 #include "sudoku/decoder/decoder.h"
 #include "sudoku/encoder/encoder.h"
 #include <gtest/gtest.h>
+#include <cstdlib>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -83,17 +84,27 @@ TEST(SudokuDecoderTest, ReconstructsBinarySolution)
     std::ofstream binary_rows(binary_template, std::ios::binary);
     ASSERT_TRUE(binary_rows.is_open());
 
-    binary::DlxSolutionHeader header = {
+    binary::DlxSolution solution;
+    solution.header = {
         .magic = DLX_SOLUTION_MAGIC,
         .version = DLX_BINARY_VERSION,
         .flags = 0,
         .column_count = COLUMN_COUNT,
     };
 
-    ASSERT_EQ(binary::dlx_write_solution_header(binary_rows, &header), 0);
-    ASSERT_EQ(binary::dlx_write_solution_row(
-                  binary_rows, 1, indices.data(), static_cast<uint16_t>(indices.size())),
-              0);
+    binary::DlxSolutionRow row = {0};
+    row.solution_id = 1;
+    row.entry_count = static_cast<uint16_t>(indices.size());
+    row.capacity = row.entry_count;
+    row.row_indices = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * row.entry_count));
+    ASSERT_NE(row.row_indices, nullptr);
+    for (size_t i = 0; i < indices.size(); i++)
+    {
+        row.row_indices[i] = indices[i];
+    }
+
+    solution.rows.push_back(row);
+    ASSERT_EQ(binary::dlx_write_solution(binary_rows, &solution), 0);
     binary_rows.close();
 
     char output_template[] = "tests/tmp_solvedXXXXXX";

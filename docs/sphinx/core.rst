@@ -119,66 +119,39 @@ Structs
    :project: dlx
    :members:
 
+.. doxygenstruct:: DlxProblem
+   :project: dlx
+   :members:
+
+.. doxygenstruct:: DlxSolution
+   :project: dlx
+   :members:
+
+The RAII aggregates `DlxProblem` and `DlxSolution` own their nested buffers and
+clean up automatically when they leave scope. Use them when you want to load or
+emit entire binary payloads without manually freeing row buffers.
+
 Binary Interface Helpers
 ------------------------
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   int dlx::binary::dlx_write_cover_header(std::ostream& output, const DlxCoverHeader* header);
-
-.. doxygenfunction:: dlx::binary::dlx_write_cover_header
+.. doxygenclass:: dlx::binary::DlxProblemStreamReader
    :project: dlx
+   :members:
 
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   int dlx::binary::dlx_read_cover_header(std::istream& input, DlxCoverHeader* header);
-
-.. doxygenfunction:: dlx::binary::dlx_read_cover_header
+.. doxygenclass:: dlx::binary::DlxProblemStreamWriter
    :project: dlx
+   :members:
 
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   int dlx::binary::dlx_write_row_chunk(std::ostream& output, uint32_t row_id, const uint32_t* columns, uint16_t column_count);
-
-.. doxygenfunction:: dlx::binary::dlx_write_row_chunk
+.. doxygenclass:: dlx::binary::DlxSolutionStreamReader
    :project: dlx
+   :members:
 
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   int dlx::binary::dlx_read_row_chunk(std::istream& input, DlxRowChunk* chunk);
-
-.. doxygenfunction:: dlx::binary::dlx_read_row_chunk
+.. doxygenclass:: dlx::binary::DlxSolutionStreamWriter
    :project: dlx
+   :members:
 
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   void dlx::binary::dlx_free_row_chunk(DlxRowChunk* chunk);
-
-.. doxygenfunction:: dlx::binary::dlx_free_row_chunk
-   :project: dlx
-
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   int dlx::binary::dlx_write_solution_header(std::ostream& output, const DlxSolutionHeader* header);
-
-.. doxygenfunction:: dlx::binary::dlx_write_solution_header
-   :project: dlx
-
-
-.. code-block:: cpp
-   :class: astro-mui-prototypes
-
-   int dlx::binary::dlx_read_solution_header(std::istream& input, DlxSolutionHeader* header);
+The streaming readers and writers can be reused to read or emit multiple
+problem/solution payloads on the same stream by calling `read_header`/`start`
+again after a payload is complete.
 
 Streaming Interfaces
 --------------------
@@ -198,34 +171,39 @@ Streaming Interfaces
    :project: dlx
    :members:
 
-.. doxygenfunction:: dlx::binary::dlx_read_solution_header
+.. code-block:: cpp
+   :class: astro-mui-prototypes
+
+   int dlx::binary::dlx_write_problem(std::ostream& output, const DlxProblem* problem);
+
+.. doxygenfunction:: dlx::binary::dlx_write_problem
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx::binary::dlx_write_solution_row(std::ostream& output, uint32_t solution_id, const uint32_t* row_indices, uint16_t row_count);
+   int dlx::binary::dlx_read_problem(std::istream& input, DlxProblem* problem);
 
-.. doxygenfunction:: dlx::binary::dlx_write_solution_row
+.. doxygenfunction:: dlx::binary::dlx_read_problem
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   int dlx::binary::dlx_read_solution_row(std::istream& input, DlxSolutionRow* row);
+   int dlx::binary::dlx_write_solution(std::ostream& output, const DlxSolution* solution);
 
-.. doxygenfunction:: dlx::binary::dlx_read_solution_row
+.. doxygenfunction:: dlx::binary::dlx_write_solution
    :project: dlx
 
 
 .. code-block:: cpp
    :class: astro-mui-prototypes
 
-   void dlx::binary::dlx_free_solution_row(DlxSolutionRow* row);
+   int dlx::binary::dlx_read_solution(std::istream& input, DlxSolution* solution);
 
-.. doxygenfunction:: dlx::binary::dlx_free_solution_row
+.. doxygenfunction:: dlx::binary::dlx_read_solution
    :project: dlx
 
 

@@ -262,7 +262,7 @@ static void build_column_indices(int row, int col, int digit, uint32_t indices[4
 
 struct binary_writer_ctx
 {
-    std::ostream* output;
+    dlx::binary::DlxProblem* problem;
     uint32_t next_row_id;
 };
 
@@ -271,11 +271,23 @@ static int binary_row_handler(int row, int col, int digit, void* ctx)
     struct binary_writer_ctx* writer = static_cast<struct binary_writer_ctx*>(ctx);
     uint32_t indices[4];
     build_column_indices(row, col, digit, indices);
-    if (dlx::binary::dlx_write_row_chunk(*writer->output, writer->next_row_id, indices, 4) != 0)
+
+    dlx::binary::DlxRowChunk chunk = {0};
+    chunk.row_id = writer->next_row_id;
+    chunk.entry_count = 4;
+    chunk.capacity = 4;
+    chunk.columns = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * 4));
+    if (chunk.columns == NULL)
     {
         return 1;
     }
 
+    for (uint16_t i = 0; i < 4; i++)
+    {
+        chunk.columns[i] = indices[i];
+    }
+
+    writer->problem->rows.push_back(chunk);
     writer->next_row_id++;
     return 0;
 }
@@ -286,7 +298,8 @@ static int write_binary_cover(std::ostream& output,
                               const bool col_used[GRID_SIZE][DIGIT_COUNT + 1],
                               const bool box_used[GRID_SIZE][DIGIT_COUNT + 1])
 {
-    dlx::binary::DlxCoverHeader header = {
+    dlx::binary::DlxProblem problem;
+    problem.header = {
         .magic = DLX_COVER_MAGIC,
         .version = DLX_BINARY_VERSION,
         .flags = 0,
@@ -294,11 +307,12 @@ static int write_binary_cover(std::ostream& output,
         .row_count = 0,
     };
 
-    if (dlx::binary::dlx_write_cover_header(output, &header) != 0)
+    struct binary_writer_ctx ctx = {.problem = &problem, .next_row_id = 1};
+    if (iterate_sudoku_candidates(grid, row_used, col_used, box_used, binary_row_handler, &ctx) != 0)
     {
         return 1;
     }
 
-    struct binary_writer_ctx ctx = {.output = &output, .next_row_id = 1};
-    return iterate_sudoku_candidates(grid, row_used, col_used, box_used, binary_row_handler, &ctx);
+    problem.header.row_count = static_cast<uint32_t>(problem.rows.size());
+    return dlx::binary::dlx_write_problem(output, &problem) != 0 ? 1 : 0;
 }

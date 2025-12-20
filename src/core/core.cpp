@@ -13,6 +13,7 @@
 #include <vector>
 #include <algorithm>
 #include <limits.h>
+#include <new>
 #include <sys/stat.h>
 
 namespace {
@@ -57,7 +58,7 @@ void Core::setMatrixDumpStream(std::ostream* stream)
 
 void SolutionOutput::emit_binary_row(const uint32_t* row_ids, int level)
 {
-    if (binary_stream == nullptr || level <= 0)
+    if (binary_writer == nullptr || level <= 0)
     {
         if (binary_callback != nullptr)
         {
@@ -72,10 +73,7 @@ void SolutionOutput::emit_binary_row(const uint32_t* row_ids, int level)
         return;
     }
 
-    if (binary::dlx_write_solution_row(*binary_stream,
-                                       next_solution_id,
-                                       row_ids,
-                                       static_cast<uint16_t>(level)) != 0)
+    if (binary_writer->write_row(row_ids, static_cast<uint16_t>(level)) != 0)
     {
         fprintf(stderr, "Failed to write binary solution row\n");
         return;
@@ -97,23 +95,37 @@ int Core::dlx_enable_binary_solution_output(SolutionOutput& output_ctx, std::ost
         .column_count = column_count,
     };
 
-    if (binary::dlx_write_solution_header(output, &header) != 0)
+    delete output_ctx.binary_writer;
+    output_ctx.binary_writer = new (std::nothrow) binary::DlxSolutionStreamWriter(output, header);
+    if (output_ctx.binary_writer == nullptr)
     {
-        fprintf(stderr, "Unable to write DLX solution header\n");
+        fprintf(stderr, "Unable to allocate DLX solution writer\n");
         return -1;
     }
 
     output_ctx.binary_stream = &output;
     output_ctx.column_count = column_count;
     output_ctx.next_solution_id = 1;
+    output_ctx.binary_rows.clear();
     return 0;
 }
 
 void Core::dlx_disable_binary_solution_output(SolutionOutput& output_ctx)
 {
+    if (output_ctx.binary_writer != nullptr)
+    {
+        if (output_ctx.binary_writer->finish() != 0)
+        {
+            fprintf(stderr, "Failed to write binary solution output\n");
+        }
+        delete output_ctx.binary_writer;
+        output_ctx.binary_writer = nullptr;
+    }
+
     output_ctx.binary_stream = nullptr;
     output_ctx.next_solution_id = 1;
     output_ctx.column_count = 0;
+    output_ctx.binary_rows.clear();
 }
 
 /**************************************************************************************************************
@@ -409,8 +421,8 @@ struct node* Core::pickItem(struct node* head)
     return i;
 }
 
-struct node* Core::generateMatrixBinaryImpl(std::istream& input,
-                                            const struct binary::DlxCoverHeader& header,
+struct node* Core::generateMatrixBinaryImpl(const struct binary::DlxCoverHeader& header,
+                                            std::vector<binary::DlxRowChunk>& rows,
                                             char*** solutions_out,
                                             int* item_count_out,
                                             int* option_count_out)
@@ -428,43 +440,27 @@ struct node* Core::generateMatrixBinaryImpl(std::istream& input,
     const uint32_t column_count = header.column_count;
     const int itemCount = static_cast<int>(column_count);
 
-    struct BinaryRowDefinition
-    {
-        uint32_t row_id;
-        std::vector<uint32_t> columns;
-    };
-
-    std::vector<BinaryRowDefinition> rows;
-    rows.reserve(header.row_count);
-
     size_t total_entries = 0;
-    binary::DlxRowChunk chunk = {0};
-    while (true)
+    for (size_t row_index = 0; row_index < rows.size(); ++row_index)
     {
-        int status = binary::dlx_read_row_chunk(input, &chunk);
-        if (status == 0)
+        auto& chunk = rows[row_index];
+        uint32_t row_id = (chunk.row_id == 0)
+                              ? static_cast<uint32_t>(row_index + 1)
+                              : chunk.row_id;
+        if (row_id > static_cast<uint32_t>(INT_MAX))
         {
-            break;
-        }
-        if (status == -1)
-        {
-            binary::dlx_free_row_chunk(&chunk);
             return nullptr;
         }
 
-        BinaryRowDefinition row = {0};
-        row.row_id = (chunk.row_id == 0) ? static_cast<uint32_t>(rows.size() + 1) : chunk.row_id;
-        if (row.row_id > static_cast<uint32_t>(INT_MAX))
+        if (chunk.entry_count > 1)
         {
-            binary::dlx_free_row_chunk(&chunk);
-            return nullptr;
+            std::sort(chunk.columns, chunk.columns + chunk.entry_count);
         }
 
-        row.columns.assign(chunk.columns, chunk.columns + chunk.entry_count);
-        std::sort(row.columns.begin(), row.columns.end());
         bool invalid_column = false;
-        for (uint32_t column : row.columns)
+        for (uint16_t i = 0; i < chunk.entry_count; ++i)
         {
+            uint32_t column = chunk.columns[i];
             if (column >= column_count)
             {
                 invalid_column = true;
@@ -473,14 +469,11 @@ struct node* Core::generateMatrixBinaryImpl(std::istream& input,
         }
         if (invalid_column)
         {
-            binary::dlx_free_row_chunk(&chunk);
             return nullptr;
         }
 
-        total_entries += row.columns.size();
-        rows.emplace_back(std::move(row));
+        total_entries += chunk.entry_count;
     }
-    binary::dlx_free_row_chunk(&chunk);
 
     if (rows.size() > static_cast<size_t>(INT_MAX))
     {
@@ -524,24 +517,27 @@ struct node* Core::generateMatrixBinaryImpl(std::istream& input,
         {
             matrix[currNodeCount + 1].data = -pending_row_id;
         }
-        pending_row_id = static_cast<int>(rows[row_index].row_id);
+        const auto& row = rows[row_index];
+        uint32_t row_id = (row.row_id == 0) ? static_cast<uint32_t>(row_index + 1) : row.row_id;
+        pending_row_id = static_cast<int>(row_id);
         has_pending_row = true;
 
         currNodeCount++;
         prevRowCount = 0;
 
-        const std::vector<uint32_t>& columns = rows[row_index].columns;
+        const uint32_t* columns = row.columns;
+        size_t column_count_for_row = row.entry_count;
         size_t column_cursor = 0;
 
         for (int assocItemCount = 1; assocItemCount <= itemCount; ++assocItemCount)
         {
-            while (column_cursor < columns.size()
+            while (column_cursor < column_count_for_row
                    && columns[column_cursor] + 1 < static_cast<uint32_t>(assocItemCount))
             {
                 column_cursor++;
             }
 
-            if (column_cursor >= columns.size())
+            if (column_cursor >= column_count_for_row)
             {
                 break;
             }
@@ -605,13 +601,21 @@ struct node* Core::generateMatrixBinaryImpl(std::istream& input,
     return matrix;
 }
 
-struct node* Core::generateMatrixBinary(std::istream& input,
-                                        const struct binary::DlxCoverHeader& header,
+struct node* Core::generateMatrixBinary(struct binary::DlxProblem& problem,
                                         char*** solutions_out,
                                         int* item_count_out,
                                         int* option_count_out)
 {
-    return generateMatrixBinaryImpl(input, header, solutions_out, item_count_out, option_count_out);
+    return generateMatrixBinaryImpl(problem.header, problem.rows, solutions_out, item_count_out, option_count_out);
+}
+
+struct node* Core::generateMatrixBinaryFromRows(const struct binary::DlxCoverHeader& header,
+                                                std::vector<binary::DlxRowChunk>& rows,
+                                                char*** solutions_out,
+                                                int* item_count_out,
+                                                int* option_count_out)
+{
+    return generateMatrixBinaryImpl(header, rows, solutions_out, item_count_out, option_count_out);
 }
 
 /**

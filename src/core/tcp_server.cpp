@@ -12,21 +12,21 @@
 #include <memory>
 #include <ostream>
 #include <streambuf>
-#include <sstream>
+#include <utility>
 #include <vector>
 
 namespace dlx {
 
 namespace {
 
-constexpr size_t kIoBufferSize = 4096;
-
-class SocketStreambuf : public std::streambuf
+class BufferedSocketStreambuf : public std::streambuf
 {
 public:
-    explicit SocketStreambuf(int fd)
+    explicit BufferedSocketStreambuf(int fd)
         : fd_(fd)
-    {}
+    {
+        setp(buffer_, buffer_ + sizeof(buffer_));
+    }
 
 protected:
     std::streamsize xsputn(const char* s, std::streamsize count) override
@@ -34,12 +34,20 @@ protected:
         std::streamsize total = 0;
         while (total < count)
         {
-            ssize_t written = send(fd_, s + total, static_cast<size_t>(count - total), 0);
-            if (written <= 0)
+            std::streamsize available = epptr() - pptr();
+            if (available == 0)
             {
-                return total;
+                if (flush_buffer() != 0)
+                {
+                    break;
+                }
+                available = epptr() - pptr();
             }
-            total += written;
+
+            std::streamsize to_copy = std::min(available, count - total);
+            memcpy(pptr(), s + total, static_cast<size_t>(to_copy));
+            pbump(static_cast<int>(to_copy));
+            total += to_copy;
         }
         return total;
     }
@@ -48,20 +56,76 @@ protected:
     {
         if (ch == traits_type::eof())
         {
-            return traits_type::not_eof(ch);
+            return sync() == 0 ? traits_type::not_eof(ch) : traits_type::eof();
         }
 
-        char c = static_cast<char>(ch);
-        return xsputn(&c, 1) == 1 ? ch : traits_type::eof();
+        if (pptr() == epptr() && flush_buffer() != 0)
+        {
+            return traits_type::eof();
+        }
+
+        *pptr() = static_cast<char>(ch);
+        pbump(1);
+        return ch;
     }
 
     int sync() override
     {
+        return flush_buffer();
+    }
+
+private:
+    int flush_buffer()
+    {
+        std::streamsize size = pptr() - pbase();
+        std::streamsize sent = 0;
+        while (sent < size)
+        {
+            ssize_t written = send(fd_, pbase() + sent, static_cast<size_t>(size - sent), 0);
+            if (written <= 0)
+            {
+                return -1;
+            }
+            sent += written;
+        }
+        setp(buffer_, buffer_ + sizeof(buffer_));
         return 0;
+    }
+
+    int fd_;
+    char buffer_[65536];
+};
+
+class SocketInputStreambuf : public std::streambuf
+{
+public:
+    explicit SocketInputStreambuf(int fd)
+        : fd_(fd)
+    {
+        setg(buffer_, buffer_, buffer_);
+    }
+
+protected:
+    int_type underflow() override
+    {
+        if (gptr() < egptr())
+        {
+            return traits_type::to_int_type(*gptr());
+        }
+
+        ssize_t bytes = recv(fd_, buffer_, sizeof(buffer_), 0);
+        if (bytes <= 0)
+        {
+            return traits_type::eof();
+        }
+
+        setg(buffer_, buffer_, buffer_ + bytes);
+        return traits_type::to_int_type(*gptr());
     }
 
 private:
     int fd_;
+    char buffer_[65536];
 };
 
 class SocketOutputStream : public std::ostream
@@ -75,24 +139,20 @@ public:
     }
 
 private:
-    SocketStreambuf buffer_;
+    BufferedSocketStreambuf buffer_;
 };
 
-bool write_solution_header(std::ostream& stream, uint32_t column_count)
+class SocketInputStream : public std::istream
 {
-    binary::DlxSolutionHeader header = {
-        .magic = DLX_SOLUTION_MAGIC,
-        .version = DLX_BINARY_VERSION,
-        .flags = 0,
-        .column_count = column_count,
-    };
-    if (binary::dlx_write_solution_header(stream, &header) != 0)
-    {
-        return false;
-    }
-    stream.flush();
-    return stream.good();
-}
+public:
+    explicit SocketInputStream(int fd)
+        : std::istream(&buffer_)
+        , buffer_(fd)
+    {}
+
+private:
+    SocketInputStreambuf buffer_;
+};
 
 } // namespace
 
@@ -100,14 +160,12 @@ struct DlxTcpServer::SolutionClient
 {
     int fd;
     std::unique_ptr<SocketOutputStream> stream;
-    uint32_t next_solution_id;
-    bool header_sent;
+    std::unique_ptr<binary::DlxSolutionStreamWriter> writer;
 
     SolutionClient(int socket_fd, std::unique_ptr<SocketOutputStream> output_stream)
         : fd(socket_fd)
         , stream(std::move(output_stream))
-        , next_solution_id(1)
-        , header_sent(false)
+        , writer(nullptr)
     {}
 
     ~SolutionClient()
@@ -120,6 +178,7 @@ struct DlxTcpServer::SolutionClient
         }
     }
 };
+
 
 DlxTcpServer::DlxTcpServer(const TcpServerConfig& config)
     : config_(config)
@@ -203,6 +262,8 @@ bool DlxTcpServer::start()
 
     request_thread_ = std::thread(&DlxTcpServer::accept_request_loop, this);
     solution_thread_ = std::thread(&DlxTcpServer::accept_solution_loop, this);
+    worker_thread_ = std::thread(&DlxTcpServer::process_problem_queue, this);
+    output_thread_ = std::thread(&DlxTcpServer::process_solution_queue, this);
     return true;
 }
 
@@ -212,6 +273,9 @@ void DlxTcpServer::stop()
     {
         return;
     }
+
+    problem_queue_cv_.notify_all();
+    solution_queue_cv_.notify_all();
 
     if (request_listen_fd_ >= 0)
     {
@@ -245,6 +309,14 @@ void DlxTcpServer::wait()
     if (solution_thread_.joinable())
     {
         solution_thread_.join();
+    }
+    if (worker_thread_.joinable())
+    {
+        worker_thread_.join();
+    }
+    if (output_thread_.joinable())
+    {
+        output_thread_.join();
     }
 }
 
@@ -287,15 +359,13 @@ void DlxTcpServer::accept_solution_loop()
             solution_clients_.push_back(client);
             if (active_column_count_.has_value())
             {
-                if (!write_solution_header(*client->stream, active_column_count_.value()))
-                {
-                    client.reset();
-                }
-                else
-                {
-                    client->header_sent = true;
-                    client->next_solution_id = 1;
-                }
+                binary::DlxSolutionHeader header = {
+                    .magic = DLX_SOLUTION_MAGIC,
+                    .version = DLX_BINARY_VERSION,
+                    .flags = 0,
+                    .column_count = active_column_count_.value(),
+                };
+                client->writer = std::make_unique<binary::DlxSolutionStreamWriter>(*client->stream, header);
             }
             remove_disconnected_clients_locked();
         }
@@ -305,78 +375,214 @@ void DlxTcpServer::accept_solution_loop()
 void DlxTcpServer::emit_solution_row(void* ctx, const uint32_t* row_ids, int level)
 {
     DlxTcpServer* server = static_cast<DlxTcpServer*>(ctx);
-    server->broadcast_solution_row(row_ids, level);
+    server->enqueue_solution_row(row_ids, level);
+}
+
+void DlxTcpServer::process_problem_queue()
+{
+    while (true)
+    {
+        ProblemTask task;
+        {
+            std::unique_lock<std::mutex> lock(problem_queue_mutex_);
+            problem_queue_cv_.wait(lock, [&]() {
+                return shutting_down_.load() || !problem_queue_.empty();
+            });
+
+            if (problem_queue_.empty())
+            {
+                if (shutting_down_.load())
+                {
+                    break;
+                }
+                continue;
+            }
+
+            task = std::move(problem_queue_.front());
+            problem_queue_.pop_front();
+        }
+
+        char** solutions = NULL;
+        int itemCount = 0;
+        int optionCount = 0;
+        struct node* matrix =
+            dlx::Core::generateMatrixBinaryFromRows(task.header, task.rows, &solutions, &itemCount, &optionCount);
+        for (auto& row : task.rows)
+        {
+            free(row.columns);
+            row.columns = nullptr;
+        }
+        task.rows.clear();
+
+        if (matrix == NULL)
+        {
+            continue;
+        }
+
+        if (optionCount <= 0)
+        {
+            dlx::Core::freeMemory(matrix, solutions);
+            continue;
+        }
+
+        {
+            SolutionEvent event;
+            event.type = SolutionEvent::Type::Begin;
+            event.column_count = static_cast<uint32_t>(itemCount);
+            std::lock_guard<std::mutex> lock(solution_queue_mutex_);
+            solution_queue_.push_back(std::move(event));
+        }
+        solution_queue_cv_.notify_one();
+
+        std::vector<uint32_t> row_ids(static_cast<size_t>(optionCount));
+
+        SolutionOutput output;
+        output.binary_stream = nullptr;
+        output.binary_callback = &DlxTcpServer::emit_solution_row;
+        output.binary_context = this;
+
+        dlx::Core::search(matrix, 0, solutions, row_ids.data(), output);
+
+        {
+            SolutionEvent event;
+            event.type = SolutionEvent::Type::End;
+            event.column_count = 0;
+            std::lock_guard<std::mutex> lock(solution_queue_mutex_);
+            solution_queue_.push_back(std::move(event));
+        }
+        solution_queue_cv_.notify_one();
+
+        dlx::Core::freeMemory(matrix, solutions);
+    }
+}
+
+void DlxTcpServer::process_solution_queue()
+{
+    while (true)
+    {
+        SolutionEvent event;
+        {
+            std::unique_lock<std::mutex> lock(solution_queue_mutex_);
+            solution_queue_cv_.wait(lock, [&]() {
+                return shutting_down_.load() || !solution_queue_.empty();
+            });
+
+            if (solution_queue_.empty())
+            {
+                if (shutting_down_.load())
+                {
+                    break;
+                }
+                continue;
+            }
+
+            event = std::move(solution_queue_.front());
+            solution_queue_.pop_front();
+        }
+
+        switch (event.type)
+        {
+        case SolutionEvent::Type::Begin:
+            begin_solution_stream(event.column_count);
+            break;
+        case SolutionEvent::Type::Row:
+            broadcast_solution_row(event.row_ids.data(), static_cast<int>(event.row_ids.size()));
+            break;
+        case SolutionEvent::Type::End:
+            broadcast_problem_complete();
+            finish_solution_stream();
+            break;
+        }
+    }
+}
+
+void DlxTcpServer::enqueue_solution_row(const uint32_t* row_ids, int level)
+{
+    if (row_ids == nullptr || level <= 0)
+    {
+        return;
+    }
+
+    SolutionEvent event;
+    event.type = SolutionEvent::Type::Row;
+    event.column_count = 0;
+    event.row_ids.assign(row_ids, row_ids + level);
+    {
+        std::lock_guard<std::mutex> lock(solution_queue_mutex_);
+        solution_queue_.push_back(std::move(event));
+    }
+    solution_queue_cv_.notify_one();
 }
 
 void DlxTcpServer::process_problem_connection(int client_fd)
 {
-    std::string payload;
-    std::vector<char> buffer(kIoBufferSize);
-    ssize_t bytes = 0;
-    while ((bytes = recv(client_fd, buffer.data(), buffer.size(), 0)) > 0)
+    SocketInputStream cover_stream(client_fd);
+    binary::DlxProblemStreamReader reader(cover_stream);
+
+    while (true)
     {
-        payload.append(buffer.data(), static_cast<size_t>(bytes));
+        binary::DlxCoverHeader header = {0};
+        if (reader.read_header(&header) != 0)
+        {
+            break;
+        }
+
+        ProblemTask task;
+        task.header = header;
+        task.rows.reserve(header.row_count);
+
+        while (true)
+        {
+            binary::DlxRowChunk chunk = {0};
+            int status = reader.read_chunk(&chunk);
+            if (status == 0)
+            {
+                break;
+            }
+            if (status == -1)
+            {
+                close(client_fd);
+                return;
+            }
+
+            task.rows.push_back(chunk);
+        }
+
+        task.header.row_count = static_cast<uint32_t>(task.rows.size());
+
+        {
+            std::lock_guard<std::mutex> lock(problem_queue_mutex_);
+            problem_queue_.push_back(std::move(task));
+        }
+        problem_queue_cv_.notify_one();
     }
+
     close(client_fd);
-
-    if (bytes < 0)
-    {
-        return;
-    }
-
-    std::istringstream cover_stream(payload);
-
-    char** solutions = NULL;
-    int itemCount = 0;
-    int optionCount = 0;
-    struct node* matrix = binary::dlx_read_binary(cover_stream, &solutions, &itemCount, &optionCount);
-    if (matrix == NULL)
-    {
-        return;
-    }
-
-    if (optionCount <= 0)
-    {
-        dlx::Core::freeMemory(matrix, solutions);
-        return;
-    }
-
-    std::vector<uint32_t> row_ids(static_cast<size_t>(optionCount));
-
-    std::unique_lock<std::mutex> problem_lock(problem_mutex_);
-    begin_solution_stream(static_cast<uint32_t>(itemCount));
-
-    SolutionOutput output;
-    output.binary_stream = nullptr;
-    output.binary_callback = &DlxTcpServer::emit_solution_row;
-    output.binary_context = this;
-
-    dlx::Core::search(matrix, 0, solutions, row_ids.data(), output);
-    broadcast_problem_complete();
-    finish_solution_stream();
-    problem_lock.unlock();
-
-    dlx::Core::freeMemory(matrix, solutions);
 }
 
 void DlxTcpServer::begin_solution_stream(uint32_t column_count)
 {
     std::lock_guard<std::mutex> lock(solution_mutex_);
     active_column_count_ = column_count;
+    binary::DlxSolutionHeader header = {
+        .magic = DLX_SOLUTION_MAGIC,
+        .version = DLX_BINARY_VERSION,
+        .flags = 0,
+        .column_count = column_count,
+    };
     for (auto& client : solution_clients_)
     {
         if (client == nullptr)
         {
             continue;
         }
-        if (!write_solution_header(*client->stream, column_count))
+        if (client->writer)
         {
-            client.reset();
+            client->writer->start(header);
         }
         else
         {
-            client->header_sent = true;
-            client->next_solution_id = 1;
+            client->writer = std::make_unique<binary::DlxSolutionStreamWriter>(*client->stream, header);
         }
     }
     remove_disconnected_clients_locked();
@@ -386,14 +592,6 @@ void DlxTcpServer::finish_solution_stream()
 {
     std::lock_guard<std::mutex> lock(solution_mutex_);
     active_column_count_.reset();
-    for (auto& client : solution_clients_)
-    {
-        if (client != nullptr)
-        {
-            client->header_sent = false;
-            client->next_solution_id = 1;
-        }
-    }
 }
 
 void DlxTcpServer::broadcast_solution_row(const uint32_t* row_ids, int level)
@@ -406,23 +604,14 @@ void DlxTcpServer::broadcast_solution_row(const uint32_t* row_ids, int level)
     std::lock_guard<std::mutex> lock(solution_mutex_);
     for (auto& client : solution_clients_)
     {
-        if (client == nullptr || !client->header_sent)
+        if (client == nullptr || client->writer == nullptr)
         {
             continue;
         }
 
-        if (binary::dlx_write_solution_row(*client->stream,
-                                           client->next_solution_id,
-                                           row_ids,
-                                           static_cast<uint16_t>(level))
-            != 0)
+        if (client->writer->write_row(row_ids, static_cast<uint16_t>(level)) != 0)
         {
             client.reset();
-        }
-        else
-        {
-            client->next_solution_id += 1;
-            client->stream->flush();
         }
     }
     remove_disconnected_clients_locked();
@@ -433,12 +622,12 @@ void DlxTcpServer::broadcast_problem_complete()
     std::lock_guard<std::mutex> lock(solution_mutex_);
     for (auto& client : solution_clients_)
     {
-        if (client == nullptr || !client->header_sent)
+        if (client == nullptr || client->writer == nullptr)
         {
             continue;
         }
 
-        if (binary::dlx_write_solution_row(*client->stream, 0, nullptr, 0) != 0)
+        if (client->writer->finish() != 0)
         {
             client.reset();
         }

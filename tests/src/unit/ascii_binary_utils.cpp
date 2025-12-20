@@ -2,6 +2,7 @@
 #include "core/binary.h"
 #include <algorithm>
 #include <climits>
+#include <cstdlib>
 #include <sstream>
 #include <vector>
 
@@ -91,7 +92,8 @@ int ascii_cover_to_binary_stream(const std::string& ascii_cover, std::ostream& o
         rows.emplace_back(std::move(columns));
     }
 
-    binary::DlxCoverHeader header = {
+    binary::DlxProblem problem;
+    problem.header = {
         .magic = DLX_COVER_MAGIC,
         .version = DLX_BINARY_VERSION,
         .flags = 0,
@@ -99,11 +101,7 @@ int ascii_cover_to_binary_stream(const std::string& ascii_cover, std::ostream& o
         .row_count = static_cast<uint32_t>(rows.size()),
     };
 
-    if (binary::dlx_write_cover_header(output, &header) != 0)
-    {
-        return -1;
-    }
-
+    problem.rows.reserve(rows.size());
     for (size_t row_index = 0; row_index < rows.size(); ++row_index)
     {
         const std::vector<uint32_t>& columns = rows[row_index];
@@ -112,18 +110,27 @@ int ascii_cover_to_binary_stream(const std::string& ascii_cover, std::ostream& o
             return -1;
         }
 
-        const uint32_t* column_ptr = columns.empty() ? nullptr : columns.data();
-        if (binary::dlx_write_row_chunk(output,
-                                        static_cast<uint32_t>(row_index + 1),
-                                        column_ptr,
-                                        static_cast<uint16_t>(columns.size()))
-            != 0)
+        binary::DlxRowChunk chunk = {0};
+        chunk.row_id = static_cast<uint32_t>(row_index + 1);
+        chunk.entry_count = static_cast<uint16_t>(columns.size());
+        chunk.capacity = chunk.entry_count;
+        if (!columns.empty())
         {
-            return -1;
+            chunk.columns = static_cast<uint32_t*>(malloc(sizeof(uint32_t) * chunk.entry_count));
+            if (chunk.columns == nullptr)
+            {
+                return -1;
+            }
+            for (uint16_t i = 0; i < chunk.entry_count; ++i)
+            {
+                chunk.columns[i] = columns[i];
+            }
         }
+
+        problem.rows.push_back(chunk);
     }
 
-    return 0;
+    return binary::dlx_write_problem(output, &problem);
 }
 
 int binary_solution_to_ascii(std::istream& input, std::string* ascii_output)
@@ -133,27 +140,15 @@ int binary_solution_to_ascii(std::istream& input, std::string* ascii_output)
         return -1;
     }
 
-    binary::DlxSolutionHeader header;
-    if (binary::dlx_read_solution_header(input, &header) != 0)
+    binary::DlxSolution solution;
+    if (binary::dlx_read_solution(input, &solution) != 0)
     {
         return -1;
     }
 
     std::ostringstream builder;
-    binary::DlxSolutionRow row = {0};
-    while (true)
+    for (const auto& row : solution.rows)
     {
-        int status = binary::dlx_read_solution_row(input, &row);
-        if (status == 0)
-        {
-            break;
-        }
-        if (status == -1)
-        {
-            binary::dlx_free_solution_row(&row);
-            return -1;
-        }
-
         for (int i = 0; i < row.entry_count; ++i)
         {
             builder << row.row_indices[i];
@@ -161,7 +156,6 @@ int binary_solution_to_ascii(std::istream& input, std::string* ascii_output)
         }
     }
 
-    binary::dlx_free_solution_row(&row);
     *ascii_output = builder.str();
     return 0;
 }

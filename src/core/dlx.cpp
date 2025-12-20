@@ -114,21 +114,20 @@ static bool open_cover_stream(const char* cover_path, CoverStream& cover_stream)
 
 static bool build_matrix_context(std::istream& cover_stream, const char* cover_path, MatrixContext& ctx)
 {
-    dlx::binary::DlxCoverHeader header;
+    dlx::binary::DlxProblem problem;
     
     //
     ctx.reset();
 
     //
-    if (dlx::binary::dlx_read_cover_header(cover_stream, &header) != 0)
+    if (dlx::binary::dlx_read_problem(cover_stream, &problem) != 0)
     {
-        printf("Failed to read binary cover header from %s.\n", cover_path);
+        printf("Failed to read binary cover data from %s.\n", cover_path);
         return false;
     }
 
     //
-    ctx.matrix = dlx::Core::generateMatrixBinary(cover_stream,
-                                                 header,
+    ctx.matrix = dlx::Core::generateMatrixBinary(problem,
                                                  &ctx.solutions,
                                                  &ctx.item_count,
                                                  &ctx.option_count);

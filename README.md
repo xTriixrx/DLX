@@ -350,7 +350,12 @@ This harness constructs the param-driven matrices defined in `tests/config/perfo
 Cases fan out across hardware threads, and each successful run appends a row to `tests/performance/dlx_search_performance.csv` (columns/groups/variants/solutions/duration). Any mismatch in expected solution counts or timeouts will fail the suite, catching regressions in search pruning or matrix generation.
 
 #### `test_dlx_network_performance`
-Drives the TCP server end-to-end while issuing bursts of Sudoku requests to measure throughput. The YAML config’s `network_performance` block controls the DLXB problem file, request rate, burst sizing, and duration. Each test logs per-second solution counts and latencies to `tests/performance/dlx_network_performance.csv`, highlighting regressions in concurrency control, rate limiting, or socket handling.
+Drives the TCP server end-to-end while issuing bursts of Sudoku requests to measure throughput. The YAML config’s `network_performance` block controls the DLXB problem file, request rate, burst sizing, and duration. Each test logs per-second solve counts, solution completion counts, and latencies to `tests/performance/dlx_network_throughput.csv`, highlighting regressions in concurrency control, rate limiting, or socket handling.
+
+Notes on interpreting the CSV:
+- **Solve Rate vs. Solution Rate** — Solve Rate is measured when the client receives a solution header; Solution Rate is measured when the terminator row arrives. With buffered socket output these two can be identical when the stream drains quickly. Divergence typically indicates output backpressure or client lag.
+- **Target rate throttling** — The harness actively paces submissions toward `target_solution_rate`, so a flat rate equal to the target does not necessarily imply saturation. Raise the target or increase request clients to probe capacity.
+- **Latency includes queueing** — The reported latency includes queueing in the TCP server problem/solution queues. If you want pure solver time, compare Solve Rate to Solution Rate or instrument server-side timestamps.
 
 #### `performance_config.yaml`
 Both performance suites are driven by `tests/config/performance_config.yaml` (an example lives beside it). By default the loader expects that relative path; set the `DLX_PERF_CONFIG` environment variable to point at an alternate absolute or relative location (relative paths are resolved against the repository root via `DLX_SOURCE_DIR`). If the file cannot be read the suites stay disabled.

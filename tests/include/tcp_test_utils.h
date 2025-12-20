@@ -173,38 +173,23 @@ private:
 
 inline std::vector<uint32_t> ReadProblemSolution(DescriptorInputStream& binary_stream)
 {
-    binary::DlxSolutionHeader header;
-    if (binary::dlx_read_solution_header(binary_stream, &header) != 0)
+    binary::DlxSolution solution;
+    if (binary::dlx_read_solution(binary_stream, &solution) != 0)
     {
         return {};
     }
-    if (header.magic != DLX_SOLUTION_MAGIC)
+    if (solution.header.magic != DLX_SOLUTION_MAGIC)
     {
         return {};
     }
 
-    binary::DlxSolutionRow row = {0};
     std::vector<uint32_t> values;
-    bool received_solution = false;
-
-    while (true)
+    if (!solution.rows.empty())
     {
-        int read_status = binary::dlx_read_solution_row(binary_stream, &row);
-        if (read_status != 1)
-        {
-            break;
-        }
-        if (row.solution_id == 0 && row.entry_count == 0)
-        {
-            break;
-        }
-
+        const auto& row = solution.rows.front();
         values.assign(row.row_indices, row.row_indices + row.entry_count);
-        received_solution = true;
     }
-
-    dlx_free_solution_row(&row);
-    return received_solution ? values : std::vector<uint32_t>();
+    return values;
 }
 
 } // namespace tcp_test_utils

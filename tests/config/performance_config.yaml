@@ -28,8 +28,8 @@ tests:
   network_performance:
     enabled: true
     duration_seconds: 60
-    request_clients: 2
+    request_clients: 1
     solution_clients: 1
-    target_solution_rate: 300
+    target_solution_rate: 100
     problem_file: tests/sudoku_example/sudoku_cover.txt
     report_path: tests/reports/dlx_network_throughput.csv

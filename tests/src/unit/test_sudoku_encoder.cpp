@@ -29,39 +29,21 @@ int count_rows_in_binary_cover(const char* path, std::vector<uint32_t>* first_ro
         return 0;
     }
 
-    binary::DlxCoverHeader header;
-    if (binary::dlx_read_cover_header(file, &header) != 0)
+    binary::DlxProblem problem;
+    if (binary::dlx_read_problem(file, &problem) != 0)
     {
-        ADD_FAILURE() << "Failed to read cover header from " << path;
+        ADD_FAILURE() << "Failed to read binary cover from " << path;
         return 0;
     }
-    EXPECT_EQ(header.column_count, COLUMN_COUNT);
+    EXPECT_EQ(problem.header.column_count, COLUMN_COUNT);
 
-    binary::DlxRowChunk chunk = {0};
-    int rows = 0;
-    while (true)
+    if (!problem.rows.empty() && first_row != nullptr)
     {
-        int status = binary::dlx_read_row_chunk(file, &chunk);
-        if (status == -1)
-        {
-            ADD_FAILURE() << "Corrupt row chunk in " << path;
-            break;
-        }
-        if (status == 0)
-        {
-            break;
-        }
-
-        if (rows == 0 && first_row != nullptr)
-        {
-            first_row->assign(chunk.columns, chunk.columns + chunk.entry_count);
-        }
-
-        rows++;
+        const auto& chunk = problem.rows.front();
+        first_row->assign(chunk.columns, chunk.columns + chunk.entry_count);
     }
 
-    binary::dlx_free_row_chunk(&chunk);
-    return rows;
+    return static_cast<int>(problem.rows.size());
 }
 
 TEST(SudokuMatrixTest, EmptyGridGeneratesFullMatrix)
@@ -170,15 +152,14 @@ TEST(SudokuMatrixTest, BinaryCoverOutputMatchesExpectations)
     std::ifstream cover(cover_template, std::ios::binary);
     ASSERT_TRUE(cover.is_open());
 
-    binary::DlxCoverHeader header;
-    ASSERT_EQ(binary::dlx_read_cover_header(cover, &header), 0);
-    EXPECT_EQ(header.magic, DLX_COVER_MAGIC);
-    EXPECT_EQ(header.version, DLX_BINARY_VERSION);
-    EXPECT_EQ(header.column_count, COLUMN_COUNT);
+    binary::DlxProblem problem;
+    ASSERT_EQ(binary::dlx_read_problem(cover, &problem), 0);
+    EXPECT_EQ(problem.header.magic, DLX_COVER_MAGIC);
+    EXPECT_EQ(problem.header.version, DLX_BINARY_VERSION);
+    EXPECT_EQ(problem.header.column_count, COLUMN_COUNT);
+    ASSERT_FALSE(problem.rows.empty());
 
-    binary::DlxRowChunk chunk = {0};
-    int read_status = binary::dlx_read_row_chunk(cover, &chunk);
-    ASSERT_EQ(read_status, 1);
+    const auto& chunk = problem.rows.front();
     EXPECT_EQ(chunk.row_id, 1u);
     EXPECT_EQ(chunk.entry_count, 4);
 
@@ -188,7 +169,6 @@ TEST(SudokuMatrixTest, BinaryCoverOutputMatchesExpectations)
         EXPECT_EQ(chunk.columns[i], expected_indices[i]);
     }
 
-    binary::dlx_free_row_chunk(&chunk);
     remove(puzzle_template);
     remove(cover_template);
 }
