@@ -20,9 +20,6 @@ This specific implementation implements the sparse matrix approach and the lates
 - Python 3.9+ (for Conan plugins, documentation tooling, and gcovr/sphinx helpers)
 - C++17 & C11 compliant compiler (`g++`, `clang`, MSVC)
 - CMake 3.15+
-- Rust toolchain 1.75+ (install via `rustup`) with `cargo` for the scheduler workspace
-  - Install `wasm32-unknown-unknown` or additional targets as needed.
-  - For coverage: `rustup component add llvm-tools-preview` plus `cargo install cargo-llvm-cov`.
 - GCC-style coverage tooling if you plan to run `conan coverage`:
   - `gcov` ships with GCC (install `sudo apt install build-essential` on Ubuntu or `xcode-select --install` on macOS for clang+gcov).
   - `gcovr` for HTML/XML reports (`pip install gcovr` or `brew install gcovr`).
@@ -83,9 +80,6 @@ for the standard suites, add `-o run_performance_tests=True` to append the perfo
 afterward (ctest runs with `-j 12`), or invoke `ctest -L performance` directly if you only want
 the performance suites. To clean everything, remove the `build/` directory (`rm -rf build`)
 and deactivate/delete the virtual environment when you’re done.
-
-The `conan test` command also runs `cargo test --workspace --all-targets` for the `scheduler-rs`
-workspace, covering unit and integration tests across all Rust crates.
 
 > **Note:** If you already have GoogleTest installed system-wide (e.g., via Homebrew), the build will use that installation. Otherwise, Conan will fetch and build `gtest` from ConanCenter (pass `--build gtest` if a binary isn’t available for your platform).
 
@@ -187,30 +181,6 @@ Behind the scenes each TCP request/response is packetized with DLXB/DLXS headers
 - A sentinel (`solution_id = 0`, `entry_count = 0`) signaling end-of-problem while leaving the socket open for the next puzzle.
 
 You can observe the protocol end-to-end via `tests/test_dlx_server.cpp` (unit tests) or by piping real Sudoku grids through `sudoku_input.py`, which consumes ASCII puzzles, pushes them over TCP, and prints each decoded grid as soon as the sentinel arrives.
-
-### Scheduler Workspace (`scheduler-rs`)
-
-> **WARNING**: **This module is in early development**
-
-The repository also includes a Rust workspace under `scheduler-rs/` that builds higher-level scheduling tools on top of the DLX binary transport:
-
-- `scheduler_core` — shared DLXB/DLXS packet models, TCP helpers, and domain structs (`Resource`, `Task`, `SchedulerProblem`).
-- `scheduler_encoder` — library + CLI that convert scheduler problem descriptions into DLXB streams (stdout or a TCP socket).
-- `scheduler_decoder` — library + CLI that read DLXS rows (stdin or a socket) and reconstruct schedules.
-- `scheduler_rest` — Axum-based REST stub that will eventually expose HTTP APIs backed by the encoder/decoder crates.
-- `sched-satellite-ext` — ABI-stable satellite extension built as a dynamic library (supports `antenna`/`fep` resource decoding).
-
-The workspace is pinned to the Rust toolchain listed in the build requirements. Conan automatically builds it via the `scheduler-rs` CMake custom target, but you can also work on it directly:
-
-Because the Rust crates speak the same DLXB/DLXS packet definitions as the C++ stack, you can mix and match encoders/decoders on either side of the TCP server. Coverage for the workspace is included automatically when running `conan coverage` (the command merges Rust `cargo llvm-cov` output into the combined LCOV/HTML report).
-
-To build the satellite extension dylib directly:
-
-```bash
-cargo build -p sched-satellite-ext
-```
-
-The REST service can load extensions from `scheduler-rs/scheduler-rest/config/config.yaml` under the optional `extensions:` key.
 
 #### Sudoku Decoder
 

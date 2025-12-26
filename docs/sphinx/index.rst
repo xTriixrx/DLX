@@ -49,18 +49,6 @@ Supporting pieces such as documentation helpers, Conan extensions, and binary-in
 
    tools
 
-Scheduler Workspace
--------------------
-
-The Rust-based scheduler crates expose higher-level encoder/decoder/server functionality on top of
-the same DLXB/DLXS protocol. Use this section to understand the workspace layout and packet models.
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Scheduler
-
-   scheduler
-
 Header Reference
 ----------------
 

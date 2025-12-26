@@ -57,7 +57,6 @@ def coverage(conan_api, parser, *args):
     summary_html = os.path.join(coverage_dir, "index.html")
     coverage_target_dir = ns.coverage_out_dir
     coverage_xml = os.path.join(coverage_dir, "coverage.xml")
-    coverage_lcov = os.path.join(coverage_dir, "coverage.lcov")
     cpp_lcov = os.path.join(coverage_dir, "coverage.cpp.lcov")
     source_root = repo_root
 
@@ -88,9 +87,7 @@ def coverage(conan_api, parser, *args):
         ]
     )
 
-    rust_lcov = _generate_rust_coverage(source_root, coverage_dir, output)
-    _merge_lcov_files(cpp_lcov, rust_lcov, coverage_lcov, output)
-    summary_html_path = _generate_combined_html(coverage_lcov, coverage_dir, source_root, output)
+    summary_html_path = _generate_combined_html(cpp_lcov, coverage_dir, source_root, output)
     if summary_html_path:
         summary_html = summary_html_path
 
@@ -109,39 +106,9 @@ def coverage(conan_api, parser, *args):
 
     output.info(
         f"Coverage reports generated: {summary_html} (HTML), "
-        f"{coverage_xml} (XML), {coverage_lcov} (LCOV).\n"
+        f"{coverage_xml} (XML), {cpp_lcov} (LCOV).\n"
         + (f"Copied all coverage report files to {coverage_target_dir}." if coverage_target_dir else "")
     )
-
-def _generate_rust_coverage(source_root, coverage_dir, output):
-    workspace_dir = os.path.join(source_root, "scheduler-rs")
-    if not os.path.isdir(workspace_dir):
-        output.info("scheduler-rs workspace not found; skipping Rust coverage.")
-        return None
-
-    cargo = shutil.which("cargo")
-    cargo_llvm_cov = shutil.which("cargo-llvm-cov")
-    if not cargo or not cargo_llvm_cov:
-        output.warning("cargo llvm-cov not found; skipping Rust coverage generation.")
-        return None
-
-    rust_cov_root = os.path.join(coverage_dir, "scheduler-rs")
-    os.makedirs(rust_cov_root, exist_ok=True)
-    lcov_path = os.path.join(rust_cov_root, "coverage.lcov")
-
-    output.info("Generating Rust coverage via cargo llvm-cov...")
-    _run_command(
-        [
-            cargo,
-            "llvm-cov",
-            "--workspace",
-            "--lcov",
-            "--output-path",
-            lcov_path,
-        ],
-        cwd=workspace_dir,
-    )
-    return lcov_path
 
 
 def _run_command(cmd, cwd=None):
@@ -150,19 +117,6 @@ def _run_command(cmd, cwd=None):
         raise ConanException(
             f"Command '{' '.join(cmd)}' failed with code {result.returncode}:\n{result.stderr}"
         )
-
-
-def _merge_lcov_files(cpp_lcov, rust_lcov, combined_path, output):
-    try:
-        shutil.copyfile(cpp_lcov, combined_path)
-    except OSError as exc:
-        raise ConanException(f"Failed to write combined LCOV file: {exc}") from exc
-
-    if rust_lcov and os.path.isfile(rust_lcov):
-        output.info("Merging Rust LCOV data into combined report...")
-        with open(combined_path, "a", encoding="utf-8") as combined, open(rust_lcov, "r", encoding="utf-8") as rust_file:
-            combined.write("\n")
-            combined.write(rust_file.read())
 
 
 def _generate_combined_html(lcov_path, output_dir, source_root, output):

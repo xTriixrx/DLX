@@ -52,11 +52,6 @@ class DlxConan(ConanFile):
         # Always execute the standard unit suites first.
         _run_ctest(["-LE", "performance"])
 
-        # Run Rust scheduler workspace tests (unit + integration) across all crates.
-        scheduler_rs_root = os.path.join(self.recipe_folder, "scheduler-rs")
-        if os.path.isdir(scheduler_rs_root):
-            self.run("cargo test --workspace --all-targets", cwd=scheduler_rs_root)
-
         if self.options.run_performance_tests:
             _run_ctest(["-L", "performance"])
 

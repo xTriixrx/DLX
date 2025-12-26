@@ -1,8 +1,0 @@
-# 443 for HTTPS
-rest_port: 80
-slot_interval_minutes: 5
-resources_path: scheduler-rs/scheduler-rest/config/resources.yaml
-extensions:
-  - id: satellite
-    path: scheduler-rs/target/debug/libsched_satellite_ext.dylib
-    enabled: true
