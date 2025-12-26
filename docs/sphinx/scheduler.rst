@@ -26,10 +26,11 @@ are centralized:
 
    scheduler-rs/
    ├── Cargo.toml          # workspace definition
-   ├── scheduler_core/     # DLXB/DLXS packet models + shared domain objects
-   ├── scheduler_encoder/  # CLI + library that emit scheduler problems as DLXB
-   ├── scheduler_decoder/  # CLI + library that reads DLXS solution streams
-   └── scheduler_server/   # Future Axum REST service that fronts the encoder/decoder
+   ├── scheduler-core/     # DLXB/DLXS packet models + shared domain objects
+   ├── scheduler-encoder/  # CLI + library that emit scheduler problems as DLXB
+   ├── scheduler-decoder/  # CLI + library that reads DLXS solution streams
+   ├── scheduler-rest/     # Future Axum REST service that fronts the encoder/decoder
+   └── sched-satellite-ext/ # ABI-stable satellite extension (dylib)
 
 All crates depend on ``scheduler_core`` for protocol types, scheduler models, and future TCP
 helpers. The encoder and decoder expose both library APIs (so other applications can embed them) and
@@ -53,9 +54,14 @@ Crate Responsibilities
    - Listens for DLXS frames, decodes each solution row, and writes verified schedules back to text
      formats or structured logs.
 
-``scheduler_server``
+``scheduler_rest``
    - Hosts an Axum-based REST façade that will eventually accept scheduling jobs from front-end
      clients and proxy those requests to ``dlx --server`` via the shared encoder/decoder libraries.
+
+``sched-satellite-ext``
+   - Builds the satellite scheduling extension as a dynamic library.
+   - Implements the ABI-stable extension interface exported by ``scheduler_core::extensions``.
+   - Validates and decodes satellite resources (e.g., ``antenna``, ``fep``) for domain constraints.
 
 DLXB Packet Structure
 ---------------------

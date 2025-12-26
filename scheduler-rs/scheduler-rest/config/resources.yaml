@@ -1,0 +1,554 @@
+resources:
+  - id: DSS12-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 35.299937599
+      longitude: -116.8054869539
+      altitude: 962.171
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+      capabilities: []
+      constraints: []
+
+  - id: DSS13-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 35.2471648135
+      longitude: -116.7944562995
+      altitude: 1070.522
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+      capabilities: []
+      constraints: []
+
+  - id: DSS14-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 35.4259013226
+      longitude: -116.8895362023
+      altitude: 1001.41
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+        Ka:
+          uplink_MHz: [34200, 34700]
+          downlink_MHz: [31800, 32300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS15-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 35.421853744
+      longitude: -116.8871930687
+      altitude: 973.241
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+      capabilities: []
+      constraints: []
+
+  - id: DSS16-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 35.341539858
+      longitude: -116.8736477134
+      altitude: 944.007
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS17-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 35.3446011161
+      longitude: -116.8723948484
+      altitude: 941.363
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS23-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 35.3399992022
+      longitude: -116.8734074469
+      altitude: 953.051
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+        Ka:
+          uplink_MHz: [34200, 34700]
+          downlink_MHz: [31800, 32300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS24-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 35.33534628
+      longitude: -116.8885349456
+      altitude: 981.921
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+        Ka:
+          uplink_MHz: [34200, 34700]
+          downlink_MHz: [31800, 32300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS25-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 35.3344927755
+      longitude: -116.8884512452
+      altitude: 983.138
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+        Ka:
+          uplink_MHz: [34200, 34700]
+          downlink_MHz: [31800, 32300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS26-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 35.3343238305
+      longitude: -116.8885970126
+      altitude: 983.315
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+        Ka:
+          uplink_MHz: [34200, 34700]
+          downlink_MHz: [31800, 32300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS27-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 35.2466237518
+      longitude: -116.7953501643
+      altitude: 1078.604
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+        Ka:
+          uplink_MHz: [34200, 34700]
+          downlink_MHz: [31800, 32300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS28-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 35.2466673795
+      longitude: -116.7952956916
+      altitude: 1078.046
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+        Ka:
+          uplink_MHz: [34200, 34700]
+          downlink_MHz: [31800, 32300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS33-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: -35.40399865
+      longitude: 148.9810024607
+      altitude: 689.64
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+      capabilities: []
+      constraints: []
+
+  - id: DSS34-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: -35.3984272953
+      longitude: 148.9814010456
+      altitude: 692.01
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+        Ka:
+          uplink_MHz: [34200, 34700]
+          downlink_MHz: [31800, 32300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS42-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: -35.4016839133
+      longitude: 148.9798303313
+      altitude: 689.46
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+      capabilities: []
+      constraints: []
+
+  - id: DSS43-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: -35.4018105731
+      longitude: 148.9812631292
+      altitude: 691.75
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+      capabilities: []
+      constraints: []
+
+  - id: DSS45-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: -35.3985671412
+      longitude: 148.9824350281
+      altitude: 691.11
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+      capabilities: []
+      constraints: []
+
+  - id: DSS46-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: -35.4128921373
+      longitude: 148.9786652573
+      altitude: 687.06
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS53-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 40.4273352334
+      longitude: -4.2506879804
+      altitude: 862.92
+      frequency_ranges:
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+        Ka:
+          uplink_MHz: [34200, 34700]
+          downlink_MHz: [31800, 32300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS54-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 40.4273897687
+      longitude: -4.2504602365
+      altitude: 856.147
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+        Ka:
+          uplink_MHz: [34200, 34700]
+          downlink_MHz: [31800, 32300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS61-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 40.4297193747
+      longitude: -4.2512296012
+      altitude: 860.874
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+      capabilities: []
+      constraints: []
+
+  - id: DSS63-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 40.4299981461
+      longitude: -4.2514700687
+      altitude: 854.539
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+      capabilities: []
+      constraints: []
+
+  - id: DSS65-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 40.431009488
+      longitude: -4.2482060317
+      altitude: 861.445
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+        X:
+          uplink_MHz: [7145, 7235]
+          downlink_MHz: [8400, 8500]
+        Ka:
+          uplink_MHz: [34200, 34700]
+          downlink_MHz: [31800, 32300]
+      capabilities: []
+      constraints: []
+
+  - id: DSS66-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Deep Space Network (DSN)
+      latitude: 40.4299968284
+      longitude: -4.2514689577
+      altitude: 854.562
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2120]
+          downlink_MHz: [2200, 2300]
+      capabilities: []
+      constraints: []
+
+  - id: WLP-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Satellite Control Network (SCN)
+      latitude: 37.94
+      longitude: -75.46
+      altitude: 13.0
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2110]
+          downlink_MHz: [2200, 2290]
+        X:
+          downlink_MHz: [8025, 8400]
+      capabilities: []
+      constraints: []
+
+  - id: WSC-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: NASA Satellite Control Network (SCN)
+      latitude: 32.5429
+      longitude: -106.6133
+      altitude: 1442.6
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2110]
+          downlink_MHz: [2200, 2290]
+        Ka:
+          downlink_GHz: [25.5, 27.0]
+      capabilities: []
+      constraints: []
+
+  - id: SVL-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: KSAT
+      latitude: 78.2306
+      longitude: 15.3894
+      altitude: 400.0
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2110]
+          downlink_MHz: [2200, 2290]
+        X:
+          downlink_MHz: [8025, 8400]
+      capabilities: []
+      constraints: []
+
+  - id: TRL-A
+    kind: antenna
+    capacity: 1
+    attributes:
+      network: KSAT
+      latitude: -72.01243
+      longitude: 2.53219
+      altitude: 1270.0
+      frequency_ranges:
+        S:
+          uplink_MHz: [2025, 2110]
+          downlink_MHz: [2200, 2290]
+        X:
+          downlink_MHz: [8025, 8400]
+      capabilities: []
+      constraints: []
+
+  - id: FEP-01
+    kind: fep
+    capacity: 1
+    attributes:
+      bands: ["S", "X"]
+
+  - id: FEP-02
+    kind: fep
+    capacity: 1
+    attributes:
+      bands: ["S", "X"]
+
+  - id: FEP-03
+    kind: fep
+    capacity: 1
+    attributes:
+      bands: ["S", "X"]
+
+  - id: FEP-04
+    kind: fep
+    capacity: 1
+    attributes:
+      bands: ["S", "X"]
+
+  - id: FEP-05
+    kind: fep
+    capacity: 1
+    attributes:
+      bands: ["S", "X"]
+
+  - id: FEP-06
+    kind: fep
+    capacity: 1
+    attributes:
+      bands: ["S", "X"]

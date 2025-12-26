@@ -1,4 +1,4 @@
-use crate::dlxb::{DlxbRowChunk, DLX_BINARY_VERSION};
+use crate::dlx::dlxb::{DlxbRowChunk, DLX_BINARY_VERSION};
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use std::convert::TryFrom;
 use std::io::{self, Read, Write};

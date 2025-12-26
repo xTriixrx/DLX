@@ -197,11 +197,20 @@ The repository also includes a Rust workspace under `scheduler-rs/` that builds 
 - `scheduler_core` — shared DLXB/DLXS packet models, TCP helpers, and domain structs (`Resource`, `Task`, `SchedulerProblem`).
 - `scheduler_encoder` — library + CLI that convert scheduler problem descriptions into DLXB streams (stdout or a TCP socket).
 - `scheduler_decoder` — library + CLI that read DLXS rows (stdin or a socket) and reconstruct schedules.
-- `scheduler_server` — Axum-based REST stub that will eventually expose HTTP APIs backed by the encoder/decoder crates.
+- `scheduler_rest` — Axum-based REST stub that will eventually expose HTTP APIs backed by the encoder/decoder crates.
+- `sched-satellite-ext` — ABI-stable satellite extension built as a dynamic library (supports `antenna`/`fep` resource decoding).
 
 The workspace is pinned to the Rust toolchain listed in the build requirements. Conan automatically builds it via the `scheduler-rs` CMake custom target, but you can also work on it directly:
 
 Because the Rust crates speak the same DLXB/DLXS packet definitions as the C++ stack, you can mix and match encoders/decoders on either side of the TCP server. Coverage for the workspace is included automatically when running `conan coverage` (the command merges Rust `cargo llvm-cov` output into the combined LCOV/HTML report).
+
+To build the satellite extension dylib directly:
+
+```bash
+cargo build -p sched-satellite-ext
+```
+
+The REST service can load extensions from `scheduler-rs/scheduler-rest/config/config.yaml` under the optional `extensions:` key.
 
 #### Sudoku Decoder
 

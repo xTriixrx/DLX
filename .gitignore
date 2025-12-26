@@ -5,8 +5,14 @@ docs/build/
 tests/reports/
 .DS_Store
 docs/sphinx/_ext/
+execute-scheduler.sh
 scheduler-rs/target/
 scheduler-rs/Cargo.lock
 conan/.conan.db
 conan/p/
+build.sh
+scheduler-ui/docs/
+scheduler-ui/guidelines/
+scheduler-ui/node_modules/
+scheduler-ui/package-lock.json
 conan/extensions/commands/__pycache__/

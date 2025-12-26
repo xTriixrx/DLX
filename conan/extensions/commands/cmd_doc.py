@@ -161,12 +161,21 @@ def _convert_rustdoc_json_to_xml(json_path, xml_dir):
             doc_elem.text = doc_text
 
         struct_inner = struct.get("inner", {}).get("struct", {})
-        kind = struct_inner.get("kind", {})
+        kind = struct_inner.get("kind")
         field_ids = []
-        if "plain" in kind:
-            field_ids = kind["plain"].get("fields", [])
-        elif "tuple" in kind:
-            field_ids = kind["tuple"].get("fields", [])
+        if isinstance(kind, dict):
+            if "plain" in kind:
+                plain = kind["plain"]
+                if isinstance(plain, dict):
+                    field_ids = plain.get("fields", [])
+                elif isinstance(plain, list):
+                    field_ids = plain
+            elif "tuple" in kind:
+                tuple_kind = kind["tuple"]
+                if isinstance(tuple_kind, dict):
+                    field_ids = tuple_kind.get("fields", [])
+                elif isinstance(tuple_kind, list):
+                    field_ids = tuple_kind
 
         for field_id in field_ids:
             field = index.get(str(field_id))

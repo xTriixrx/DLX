@@ -1,9 +1,10 @@
 [workspace]
 members = [
-    "scheduler_core",
-    "scheduler_encoder",
-    "scheduler_decoder",
-    "scheduler_server",
+    "scheduler-core",
+    "scheduler-encoder",
+    "scheduler-decoder",
+    "scheduler-rest",
+    "sched-satellite-ext",
 ]
 
 resolver = "2"

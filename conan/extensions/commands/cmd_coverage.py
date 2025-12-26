@@ -13,6 +13,12 @@ def coverage(conan_api, parser, *args):
     Usage: conan coverage . --build-folder build
     """
     parser.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Path to the project root (default: current directory).",
+    )
+    parser.add_argument(
         "--build-folder",
         default="build",
         help="Path to the CMake build directory that contains compiled objects/tests.",
@@ -31,7 +37,11 @@ def coverage(conan_api, parser, *args):
     )
     ns = parser.parse_args(*args)
 
-    build_dir = os.path.abspath(ns.build_folder)
+    repo_root = os.path.abspath(ns.path)
+    build_dir = ns.build_folder
+    if not os.path.isabs(build_dir):
+        build_dir = os.path.join(repo_root, build_dir)
+    build_dir = os.path.abspath(build_dir)
     if not os.path.isdir(build_dir):
         raise ConanException(f"Build folder '{build_dir}' does not exist.")
 
@@ -49,7 +59,7 @@ def coverage(conan_api, parser, *args):
     coverage_xml = os.path.join(coverage_dir, "coverage.xml")
     coverage_lcov = os.path.join(coverage_dir, "coverage.lcov")
     cpp_lcov = os.path.join(coverage_dir, "coverage.cpp.lcov")
-    source_root = os.path.abspath(os.path.join(build_dir, os.pardir))
+    source_root = repo_root
 
     output = ConanOutput()
     _run_command(

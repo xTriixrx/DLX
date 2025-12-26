@@ -2,6 +2,11 @@
 
 use serde::{Deserialize, Serialize};
 
+pub mod context;
+pub mod rsrc;
+
+pub use context::{ConstraintContext, SlotId, TimeSlot};
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Resource {
     pub id: String,

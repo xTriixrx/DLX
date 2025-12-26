@@ -1,11 +1,10 @@
 [package]
-name = "scheduler_encoder"
+name = "scheduler-encoder"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
-scheduler_core = { path = "../scheduler_core" }
+scheduler-core = { path = "../scheduler-core" }
 serde = { version = "1", features = ["derive"] }
-serde_yaml = "0.9"
