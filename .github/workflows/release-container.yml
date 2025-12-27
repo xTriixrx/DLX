@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [amd64, arm64]
+        arch: [arm64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -131,6 +131,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
+          name: DLX Container Release ${{ github.ref_name }}
           files: |
             release-assets/**/dlx-image-*.tar.gz
             release-assets/**/dlx-image-*.sbom.json
