@@ -61,18 +61,18 @@ jobs:
             -t dlx:${{ github.ref_name }}-${{ matrix.arch }} \
             .
 
-      - name: Compress image archive
-        run: |
-          tar -czf dlx-image-${{ github.ref_name }}-${{ matrix.arch }}.tar.gz dlx-${{ matrix.arch }}.tar
-          rm -f dlx-${{ matrix.arch }}.tar
-
       - name: Install Syft
         uses: anchore/sbom-action/download-syft@v0
 
       - name: Generate SBOM (SPDX JSON)
         run: |
-          syft docker-archive:dlx-image-${{ github.ref_name }}-${{ matrix.arch }}.tar.gz \
+          syft docker-archive:dlx-${{ matrix.arch }}.tar \
             -o spdx-json=dlx-image-${{ github.ref_name }}-${{ matrix.arch }}.sbom.json
+      
+      - name: Compress image archive
+        run: |
+          tar -czf dlx-image-${{ github.ref_name }}-${{ matrix.arch }}.tar.gz dlx-${{ matrix.arch }}.tar
+          rm -f dlx-${{ matrix.arch }}.tar
 
       - name: Generate checksums
         run: |
