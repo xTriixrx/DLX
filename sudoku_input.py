@@ -7,13 +7,17 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+import atexit
+import os
 
 HOST = "127.0.0.1"
 REQ_PORT = 5555
 SOL_PORT = 5556
-DLX_BIN = Path("./build/dlx")
 ENCODER_BIN = Path("./build/sudoku_encoder")
 DECODER_BIN = Path("./build/sudoku_decoder")
+DLX_IMAGE = "dlx:latest"
+DLX_CONTAINER = "dlx-solver"
+DLX_PLATFORM = os.environ.get("DLX_PLATFORM")
 
 DLXS_MAGIC_BYTES = 4
 DLXS_VERSION_BYTES = 2
@@ -34,9 +38,50 @@ DLXS_ROW_VALUE_BYTES = 4
 
 
 def start_server():
-    return subprocess.Popen([str(DLX_BIN), "--server", str(REQ_PORT), str(SOL_PORT)])
+    platform_args = ["--platform", DLX_PLATFORM] if DLX_PLATFORM else []
+    return subprocess.Popen(
+        [
+            "docker",
+            "run",
+            *platform_args,
+            "--rm",
+            "--name",
+            DLX_CONTAINER,
+            "-p",
+            f"{REQ_PORT}:7000",
+            "-p",
+            f"{SOL_PORT}:7001",
+            "-e",
+            "DLX_PROBLEM_PORT=7000",
+            "-e",
+            "DLX_SOLUTION_PORT=7001",
+            DLX_IMAGE,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+def wait_for_port(port: int, proc: subprocess.Popen, timeout: float = 10.0) -> socket.socket:
+    deadline = time.time() + timeout
+    last_error = None
+    while time.time() < deadline:
+        if proc.poll() is not None:
+            stderr = proc.stderr.read().decode() if proc.stderr else ""
+            stdout = proc.stdout.read().decode() if proc.stdout else ""
+            raise RuntimeError(
+                "Docker server exited early."
+                + (f"\nstdout: {stdout.strip()}" if stdout else "")
+                + (f"\nstderr: {stderr.strip()}" if stderr else "")
+            )
+        try:
+            return socket.create_connection((HOST, port), timeout=1)
+        except OSError as exc:
+            last_error = exc
+            time.sleep(0.2)
+    raise RuntimeError(f"Timed out waiting for port {port}: {last_error}")
 
 def stop_server(proc):
+    subprocess.run(["docker", "stop", "-t", "2", DLX_CONTAINER], check=False)
     proc.terminate()
     try:
         proc.wait(timeout=2)
@@ -48,19 +93,31 @@ def send_problem(puzzle_file: Path):
     encoder = subprocess.Popen([str(ENCODER_BIN), str(puzzle_file)], stdout=subprocess.PIPE)
     assert encoder.stdout is not None
     req_sock = socket.create_connection((HOST, REQ_PORT))
-    with encoder.stdout as src, req_sock.makefile("wb") as dest:
-        dest.write(src.read())
-        dest.flush()
-    req_sock.shutdown(socket.SHUT_WR)
-    req_sock.close()
-    encoder.wait()
+    try:
+        with encoder.stdout as src:
+            while True:
+                chunk = src.read(65536)
+                if not chunk:
+                    break
+                req_sock.sendall(chunk)
+        encoder.wait()
+        if encoder.returncode != 0:
+            raise RuntimeError("Sudoku encoder failed")
+    finally:
+        req_sock.shutdown(socket.SHUT_WR)
+        req_sock.close()
 
-def read_dlxs_frame(solution_stream) -> bytes:
+def read_dlxs_frame(solution_sock: socket.socket) -> bytes:
     def read_exact(size: int) -> bytes:
-        data = solution_stream.read(size)
-        if len(data) != size:
-            raise RuntimeError("Incomplete DLXS stream")
-        return data
+        chunks = bytearray()
+        while len(chunks) < size:
+            data = solution_sock.recv(size - len(chunks))
+            if not data:
+                break
+            chunks.extend(data)
+        if len(chunks) != size:
+            raise RuntimeError(f"Incomplete DLXS stream (got {len(chunks)} of {size} bytes)")
+        return bytes(chunks)
 
     frame = bytearray()
     header = read_exact(DLXS_HEADER_SIZE)
@@ -80,7 +137,7 @@ def read_dlxs_frame(solution_stream) -> bytes:
 
     return bytes(frame)
 
-def solve_puzzle(puzzle_lines, solution_stream):
+def solve_puzzle(puzzle_lines, solution_sock: socket.socket):
     if len(puzzle_lines) != 9:
         raise ValueError("Puzzle must contain exactly 9 lines")
     with tempfile.NamedTemporaryFile("w", delete=False) as tmp:
@@ -88,7 +145,7 @@ def solve_puzzle(puzzle_lines, solution_stream):
         tmp_path = Path(tmp.name)
     try:
         send_problem(tmp_path)
-        frame = read_dlxs_frame(solution_stream)
+        frame = read_dlxs_frame(solution_sock)
         decoder = subprocess.run(
             [str(DECODER_BIN), str(tmp_path)],
             input=frame,
@@ -111,10 +168,11 @@ def main():
 
     signal.signal(signal.SIGINT, handle_signal)
     signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGHUP, handle_signal)
+    signal.signal(signal.SIGQUIT, handle_signal)
+    atexit.register(stop_server, server_proc)
 
-    time.sleep(1)
-    solution_sock = socket.create_connection((HOST, SOL_PORT))
-    solution_stream = solution_sock.makefile("rb")
+    solution_sock = wait_for_port(SOL_PORT, server_proc)
 
     print("Enter Sudoku puzzles (9 lines each). Separate puzzles with a blank line.")
     buffer = []
@@ -128,7 +186,7 @@ def main():
         buffer.append(line)
         if len(buffer) == 9:
             try:
-                solve_puzzle(buffer, solution_stream)
+                solve_puzzle(buffer, solution_sock)
             except Exception as exc:
                 print(f"Error solving puzzle: {exc}", file=sys.stderr)
                 break
@@ -138,7 +196,6 @@ def main():
     if buffer:
         print("Incomplete puzzle ignored", file=sys.stderr)
 
-    solution_stream.close()
     solution_sock.close()
     stop_server(server_proc)
 

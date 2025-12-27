@@ -93,6 +93,40 @@ conan config install conan
 
 This copies `conan/remotes.json`, `conan/profiles/default`, and the custom command plugins (`coverage`, `doc`) into your Conan home. If you have an existing profile you want to keep, back it up before running the install. Afterward, tweak `~/.conan2/profiles/default` to match your `os`, `arch`, and compiler if needed.
 
+### Docker Build (dlx)
+
+The repository includes a UBI 9-based multi-stage Dockerfile that builds the `dlx` binary and ships a minimal runtime image. The default container entrypoint starts the TCP server with ports `7000` and `7001`, but you can override them at runtime.
+
+Build the image:
+
+```bash
+docker build -t dlx:latest .
+```
+
+On Apple Silicon (arm64), force an amd64 build to match the UBI base images:
+
+```bash
+docker build --platform=linux/amd64 -t dlx:latest .
+```
+
+Run with defaults:
+
+```bash
+docker run --rm -p 7000:7000 -p 7001:7001 dlx:latest
+```
+
+Override ports via environment variables:
+
+```bash
+docker run --rm -e DLX_PROBLEM_PORT=7100 -e DLX_SOLUTION_PORT=7101 -p 7100:7100 -p 7101:7101 dlx:latest
+```
+
+Override by passing arguments directly:
+
+```bash
+docker run --rm -p 7200:7200 -p 7201:7201 dlx:latest --server 7200 7201
+```
+
 ## Sudoku Solver
 
 ### Building

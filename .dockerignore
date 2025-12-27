@@ -1,0 +1,14 @@
+.git
+.build
+build
+coverage
+docs/build
+scheduler-ui/node_modules
+scheduler-ui/dist
+scheduler-ui/.next
+scheduler-ui/.vite
+scheduler-ui/.turbo
+scheduler-ui/.cache
+node_modules
+.tmp
+tmp
