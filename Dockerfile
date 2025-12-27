@@ -22,7 +22,7 @@ RUN conan config install conan \
     && conan install . -s build_type=Release --build=missing \
     && conan build . -s build_type=Release \
     && strip /opt/dlx/build/dlx \
-    && mkdir -p /opt/dlx/runtime-libs \
+    && mkdir -p /opt/dlx/runtime-libs /opt/dlx/runtime-libs/lib /opt/dlx/runtime-libs/lib64 \
     && ldd /opt/dlx/build/dlx | awk '{for (i=1;i<=NF;i++) if (index($i,"/")==1) print $i}' | sort -u > /opt/dlx/runtime-libs/ldd.list \
     && xargs -a /opt/dlx/runtime-libs/ldd.list -I{} cp -v --parents {} /opt/dlx/runtime-libs
 
