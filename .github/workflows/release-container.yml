@@ -71,7 +71,7 @@ jobs:
 
       - name: Generate SBOM (SPDX JSON)
         run: |
-          syft docker-archive:dlx-${{ matrix.arch }}.tar \
+          syft docker-archive:dlx-image-${{ github.ref_name }}-${{ matrix.arch }}.tar.gz \
             -o spdx-json=dlx-image-${{ github.ref_name }}-${{ matrix.arch }}.sbom.json
 
       - name: Generate checksums
