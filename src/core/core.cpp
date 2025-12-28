@@ -635,7 +635,7 @@ void Core::printSolutions(char** solutions, const uint32_t* row_ids, int level, 
 
     if (output.sink != nullptr)
     {
-        SolutionView view{solutions, level};
+        sink::SolutionView view{solutions, level};
         output.sink->on_solution(view);
         output.sink->flush();
     }

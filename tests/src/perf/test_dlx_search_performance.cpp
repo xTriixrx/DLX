@@ -210,7 +210,7 @@ private:
  * performance harness to verify both the cardinality and the recursion depth
  * without writing to stdout or files.
  */
-class CountingSink : public dlx::SolutionSink
+class CountingSink : public dlx::sink::SolutionSink
 {
 public:
     /**
@@ -225,7 +225,7 @@ public:
      *
      * @param view Solution view emitted by the core solver.
      */
-    void on_solution(const dlx::SolutionView& view) override
+    void on_solution(const dlx::sink::SolutionView& view) override
     {
         // Count every callback to verify the solver traversed all permutations.
         solution_count += 1;

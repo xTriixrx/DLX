@@ -81,8 +81,8 @@ struct OutputContext
     bool write_to_stdout = false;
     bool stdout_suppressed = false;
     bool binary_output_enabled = false;
-    std::unique_ptr<dlx::OstreamSolutionSink> console_sink;
-    dlx::CompositeSolutionSink sink_router;
+    std::unique_ptr<dlx::sink::OstreamSolutionSink> console_sink;
+    dlx::sink::CompositeSolutionSink sink_router;
 
     OutputContext() = default;
     ~OutputContext()
@@ -129,7 +129,7 @@ struct OutputContext
 
         console_sink.reset();
         owned_file_stream.reset();
-        sink_router = dlx::CompositeSolutionSink();
+        sink_router = dlx::sink::CompositeSolutionSink();
         stream = nullptr;
         write_to_stdout = false;
         stdout_suppressed = false;

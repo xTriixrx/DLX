@@ -12,10 +12,10 @@ TEST(SolutionSinkTest, OstreamSinkSerializesValues)
     char value1[] = "42";
     char value2[] = "84";
     char* values[] = {value1, value2};
-    dlx::SolutionView view{values, 2};
+    dlx::sink::SolutionView view{values, 2};
 
     std::ostringstream output;
-    dlx::OstreamSolutionSink sink(output);
+    dlx::sink::OstreamSolutionSink sink(output);
 
     sink.on_solution(view);
     sink.flush();
@@ -23,13 +23,13 @@ TEST(SolutionSinkTest, OstreamSinkSerializesValues)
     EXPECT_EQ(output.str(), "42 84\n");
 }
 
-class RecordingSink : public dlx::SolutionSink
+class RecordingSink : public dlx::sink::SolutionSink
 {
 public:
     std::vector<std::vector<std::string>> emissions;
     int flush_count = 0;
 
-    void on_solution(const dlx::SolutionView& view) override
+    void on_solution(const dlx::sink::SolutionView& view) override
     {
         std::vector<std::string> row;
         for (int i = 0; i < view.count; i++)
@@ -48,12 +48,12 @@ TEST(SolutionSinkTest, CompositeSinkBroadcastsToAllSinks)
     char value2[] = "14";
     char value3[] = "21";
     char* values[] = {value1, value2, value3};
-    dlx::SolutionView view{values, 3};
+    dlx::sink::SolutionView view{values, 3};
 
     RecordingSink first;
     RecordingSink second;
 
-    dlx::CompositeSolutionSink composite;
+    dlx::sink::CompositeSolutionSink composite;
     composite.add_sink(&first);
     composite.add_sink(&second);
 

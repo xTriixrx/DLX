@@ -1,7 +1,7 @@
 #include "core/solution_sink.h"
 #include <iostream>
 
-namespace dlx {
+namespace dlx::sink {
 
 OstreamSolutionSink::OstreamSolutionSink(std::ostream& stream) : stream_(stream) {}
 

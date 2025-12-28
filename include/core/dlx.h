@@ -49,7 +49,7 @@ struct SolutionOutput
 {
     using BinaryRowCallback = void (*)(void* ctx, const uint32_t* row_ids, int level);
 
-    SolutionSink* sink;
+    sink::SolutionSink* sink;
     std::ostream* binary_stream;
     BinaryRowCallback binary_callback;
     void* binary_context;

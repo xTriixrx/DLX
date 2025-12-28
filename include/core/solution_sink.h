@@ -4,7 +4,7 @@
 #include <ostream>
 #include <vector>
 
-namespace dlx {
+namespace dlx::sink {
 
 struct SolutionView
 {

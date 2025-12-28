@@ -184,7 +184,7 @@ static bool setup_output_context(const char* solution_path, int item_count, Outp
 
     if (!ctx.stdout_suppressed)
     {
-        ctx.console_sink = std::make_unique<dlx::OstreamSolutionSink>(std::cout);
+        ctx.console_sink = std::make_unique<dlx::sink::OstreamSolutionSink>(std::cout);
         ctx.sink_router.add_sink(ctx.console_sink.get());
     }
     ctx.output.sink = ctx.sink_router.empty() ? nullptr : &ctx.sink_router;
