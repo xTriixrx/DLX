@@ -96,7 +96,7 @@ private:
     static void unhide(struct node*);
     static void uncover(struct node*);
     static void printSolutions(char**, const uint32_t*, int, SolutionOutput&);
-    static struct node* pickItem(struct node*);
+    static struct node* pickConstraint(struct node*);
     static struct node* generateMatrixBinaryImpl(const struct dlx::binary::DlxCoverHeader& header,
                                                  std::vector<dlx::binary::DlxRowChunk>& rows,
                                                  char*** solutions_out,

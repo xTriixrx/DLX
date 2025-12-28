@@ -155,12 +155,12 @@ void Core::search(struct node* head, int level, char** solutions, uint32_t* row_
         return;
     }
     
-    // Pick an item i (column), and cover the item.
-    struct node* item = pickItem(head);
-    cover(item);
+    // Pick an item i (column constraint), and cover the item.
+    struct node* constraint = pickConstraint(head);
+    cover(constraint);
     
     // Pick an option xl (row), and set potential partial solution
-    struct node* option = item->down;
+    struct node* option = constraint->down;
     struct node* optionNumber = option;
     
     // Traverse through matrix until the choosen options' associated spacer node is found
@@ -178,7 +178,7 @@ void Core::search(struct node* head, int level, char** solutions, uint32_t* row_
 
     // While node of a particular option row doesn't loop back to item node.
     struct node* optionPart;
-    while (option != item)
+    while (option != constraint)
     {
         // Select next part of current option;
         optionPart = option + 1;
@@ -226,8 +226,8 @@ void Core::search(struct node* head, int level, char** solutions, uint32_t* row_
             }
         }
 
-        // Update item to top of option, option to next option for item
-        item = option->top;
+        // Update constraint to top of option, option to next option for constraint
+        constraint = option->top;
         option = option->down;
         optionNumber = option;
 
@@ -246,14 +246,15 @@ void Core::search(struct node* head, int level, char** solutions, uint32_t* row_
         row_ids[level] = optionRowId;
     }
 
-    // Free malloc'd memory and uncover the item
+    // Free malloc'd memory and uncover the constraint
     free(optionStr);
-    uncover(item);
+    uncover(constraint);
 }
 
 /**
- * An auxilary function used by search to cover an item column i. Covering an item column covers all options
- * associated with that item column, removing them from the set of options to be selectable.
+ * An auxilary function used by search to cover a constraint item column i. Covering a constraint
+ * column covers all options associated with that item column, removing them from the set of
+ * options to be selectable.
  * 
  * @param struct node* A node pointer to some item column.
  * @return void
@@ -271,7 +272,7 @@ void Core::cover(struct node* i)
         p = p->down;
     }
 
-    // Cover item i by updating its left and right to point to each other
+    // Cover constraint i by updating its left and right to point to each other
     l = i->left;
     r = i->right;
 
@@ -392,7 +393,7 @@ void Core::unhide(struct node* p)
  * @param struct node* A node pointer to the head of the matrix.
  * @return struct node* Returns the address to the item node with the smallest option length.
  */ 
-struct node* Core::pickItem(struct node* head)
+struct node* Core::pickConstraint(struct node* head)
 {
     int theta = INT_MAX;
     struct node* i = NULL;
